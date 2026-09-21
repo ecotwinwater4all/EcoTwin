@@ -1,0 +1,654 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ntitle-fs: 20px;
+  --nsub-fs: 20px;
+  --badge-fs: 20px;
+}
+
+html { height: 100%; }
+
+body {
+  background: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  color: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 24px;
+  border-top: 1px solid #e8e5e0;
+  font-size: 12px;
+  color: #999;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 10px;
+  gap: 10px;
+}
+
+.canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.09), 0 6px 28px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.07);
+}
+/* Auto-fit mode centres the stage (rules above). Manual-size mode pins it to
+   the wrap's top-left instead, and fitCanvas() toggles this class to match.
+   Two reasons, both load-bearing:
+   - Centring re-centres on every size change, so growing the area eastward
+     slides the drawing westward by half the growth. Pinned, the boundary
+     follows the cursor and the drawing stays put.
+   - A centred flex item that overflows its scroll container puts its start
+     edge *outside* the scrollable area, where no scrollbar can reach it. Pinned
+     to the start, all overflow lands on the right/bottom and stays reachable. */
+.canvas-wrap.manual-size { align-items: flex-start; justify-content: flex-start; }
+.canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1622px;  /* kept in sync with DEFAULT_CANVAS_SIZE; fitCanvas() overrides */
+  height: 1231px;
+  flex-shrink: 0;
+  user-select: none;
+}
+/* Inset guide showing CANVAS_MARGIN — the keep-clear band between the chart
+   area's boundary line and the content. Shown only while a drag/resize is in
+   progress (see setMarginGuide()); inset is set in logical px by fitCanvas(). */
+#canvas-margin-guide {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  border: 1px dashed #cfc8ba;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+#canvas-margin-guide.show { opacity: 1; }
+.center-snap-guide {
+  position: absolute;
+  z-index: 9;
+  pointer-events: none;
+  background: #e06d5a;
+  opacity: 0;
+}
+.center-snap-guide.vertical { top: 0; height: 100%; }
+.center-snap-guide.horizontal { left: 0; width: 100%; }
+.center-snap-guide.show { opacity: 0.9; }
+svg#svgl { user-select: none; }
+
+svg#svgl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  z-index: 2;
+  pointer-events: none;
+}
+
+
+.split-handle {
+  width: 8px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  position: relative;
+  align-self: stretch;
+}
+.split-handle::after {
+  content: '';
+  position: absolute;
+  left: 3px; right: 3px; top: 0; bottom: 0;
+  border-radius: 2px;
+}
+.split-handle:hover::after, .split-handle.dragging::after {
+  background: rgba(59,125,216,0.25);
+}
+.side {
+  width: 280px;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.09), 0 6px 28px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.07);
+  flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+}
+.side-inner {
+  width: 100%;
+  padding: 18px 18px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+.side-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e8e5df;
+}
+.side-title { font-size: 15px; font-weight: 600; color: #111; line-height: 1.3; flex: 1; }
+.side-badge { display: none; font-size: 11px; padding: 2px 6px; border-radius: 3px; font-weight: 500; flex-shrink: 0; margin-top: 1px; }
+.side-close {
+  width: 20px; height: 20px; border-radius: 3px;
+  border: 1px solid #ddd; background: #f7f5f1;
+  font-size: 16px; line-height: 1; color: #888;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+}
+.side-close:hover { background: #eee; }
+.side-inner h4 {
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: #999; margin: 14px 0 5px; font-weight: 600;
+}
+.side-inner h4:first-of-type { margin-top: 0; }
+.side-inner p, .side-inner li { font-size: 13.5px; color: #444; line-height: 1.7; }
+.side-inner p { text-align: justify; }
+.side-inner ul { padding-left: 14px; }
+.side-inner li { margin-bottom: 3px; }
+.side-inner strong { color: #222; font-weight: 600; }
+.side-inner code { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; background: #f4f2ee; padding: 1px 4px; border-radius: 2px; }
+.side-inner a { color: #1a55a0; text-decoration: none; }
+.side-inner a:hover { text-decoration: underline; }
+.side-inner em { font-style: italic; color: #555; }
+.side-inner hr { border: none; border-top: 1px solid #e0ddd8; margin: 10px 0; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.tag {
+  background: #f7f5f1; border: 1px solid #dedad4; border-radius: 3px;
+  padding: 2px 6px; font-size: 12.5px; color: #555;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+}
+
+/* ── Node base ── */
+.node {
+  position: absolute;
+  border-radius: 5px;
+  border: 1.5px solid #b8cfe8;
+  background: #fff;
+  cursor: pointer;
+  transition: box-shadow 0.12s;
+}
+.node:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.node.active { box-shadow: 0 0 0 2px #3b7dd8; }
+body.arrow-selected .node:hover { box-shadow: none !important; cursor: default !important; }
+body.arrow-selected .node .rh    { pointer-events: none !important; background: none !important; }
+.node.prog { border-color: #d4c090; border-style: dashed; }
+.node.plan { border-color: #c8c5be; border-style: dashed; }
+.node.prog.active { box-shadow: 0 0 0 2px #c89a20; }
+.node.plan.active { box-shadow: 0 0 0 2px #999; }
+
+/* ── Model node header (implemented) ── */
+.node-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 9px 11px 8px;
+  background: #dceaf5;
+  border-radius: 3px 3px 0 0;
+}
+.node.prog .node-head { background: #fdf6e3; }
+.node.plan .node-head { background: #ebebeb; }
+
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #3b7dd8; flex-shrink: 0; margin-top: 3px; }
+.node.prog .dot { background: #c89a20; }
+.node.plan .dot { background: #999; }
+
+.ntitle { font-size: var(--ntitle-fs); font-weight: 500; color: #1a1a1a; flex: 1; line-height: 1.35; }
+
+.badge {
+  font-size: var(--badge-fs); padding: 2px 6px; border-radius: 3px; font-weight: 500;
+  background: #c8ddf0; color: #1a55a0; flex-shrink: 0; white-space: nowrap; margin-top: 1px;
+}
+.node.prog .badge { background: #faeec8; color: #8a6008; }
+.node.plan .badge { background: #e0ddd8; color: #666; }
+
+.nsub { padding: 6px 11px 9px; font-size: var(--nsub-fs); color: #777; line-height: 1.4; }
+
+/* ── Data source nodes (.node.src) — distinct green tint ── */
+.node.src { border-color: #7ab87a; }
+.node.src .node-head { background: #e2f0e2; }
+.node.src .dot { background: #3a8a3a; }
+.node.src .badge { background: #c4e4c4; color: #1a5c1a; }
+.node.src.active { box-shadow: 0 0 0 2px #3a8a3a; }
+.node.bar .nsub { display: none; }
+
+/* ── Text-only floating annotations ── */
+.node.text-only { border-color: transparent !important; background: transparent !important; }
+.node.text-only .node-head { display: none; }
+.node.text-only:hover { box-shadow: 0 0 0 1px rgba(0,0,0,0.2) !important; border-color: #bbb !important; }
+.node.text-only.active { box-shadow: 0 0 0 2px #3b7dd8 !important; border-color: #3b7dd8 !important; }
+.node.text-only .nsub { padding: 4px 8px; }
+
+/* ── Multi-select highlight ── */
+.node.multi-selected { box-shadow: 0 0 0 2.5px #f0a020 !important; }
+
+.rh { position: absolute; z-index: 3; box-sizing: border-box; }
+.rh-e  { width:6px; top:15%; bottom:15%; right:-3px; cursor:e-resize; }
+.rh-w  { width:6px; top:15%; bottom:15%; left:-3px;  cursor:w-resize; }
+.rh-s  { height:6px; left:15%; right:15%; bottom:-3px; cursor:s-resize; }
+.rh-n  { height:6px; left:15%; right:15%; top:-3px;   cursor:n-resize; }
+.rh-se { width:9px; height:9px; right:-4px; bottom:-4px; cursor:se-resize; }
+.rh-sw { width:9px; height:9px; left:-4px;  bottom:-4px; cursor:sw-resize; }
+.rh-ne { width:9px; height:9px; right:-4px; top:-4px;    cursor:ne-resize; }
+.rh-nw { width:9px; height:9px; left:-4px;  top:-4px;    cursor:nw-resize; }
+.node:hover .rh { background:rgba(59,125,216,0.3); border-radius:2px; }
+
+.legend-resize-handle { position:absolute; right:-4px; top:0; bottom:0; width:8px; cursor:ew-resize; z-index:3; }
+.legend-resize-handle:hover { background:rgba(59,125,216,0.25); border-radius:2px; }
+
+/* ── Draw mode: nodes become click-through so SVG snap dots receive events ── */
+body.drawing-mode .node    { pointer-events:none !important; cursor:crosshair !important; }
+body.drawing-mode .node *  { pointer-events:none !important; cursor:crosshair !important; }
+body.drawing-mode svg#svgl { pointer-events:all !important; cursor:crosshair; }
+
+/* ── Top toolbar (MS Office style) ── */
+.toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 16px 4px 16px;
+  flex-shrink: 0;
+  width: 100%;
+  background: #f5f4f2;
+  border-bottom: 1px solid #d4d0cb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  overflow: visible;
+  position: relative;
+  z-index: 20;
+}
+.toolbar button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #3a3a3c;
+  background: transparent;
+  border: 1px solid #ccc9c4;
+  border-radius: 5px;
+  padding: 5px 9px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.1s, border-color 0.1s;
+}
+.toolbar button:hover { background: rgba(0,0,0,0.06); border-color: #b8b5b0; }
+.toolbar button:active { background: rgba(0,0,0,0.11); transform: translateY(0.5px); }
+.toolbar button:disabled { opacity: 0.36; cursor: default; }
+.toolbar button:disabled:hover { background: transparent; border-color: #ccc9c4; transform: none; }
+/* flat ghost icon buttons — no border, no background */
+.tb-icon-btn {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  width: 28px; height: 28px;
+  padding: 0 !important;
+  border-radius: 6px !important;
+  justify-content: center !important;
+  color: #4a4a4e;
+}
+.tb-icon-btn:hover { background: rgba(0,0,0,0.07) !important; border-color: transparent !important; }
+.tb-icon-btn:active { background: rgba(0,0,0,0.14) !important; }
+.tb-icon-btn:disabled:hover { background: transparent !important; }
+.tb-icon-btn.tb-active { background: rgba(26,85,160,0.12) !important; color: #1a55a0; }
+.tb-icon-btn.tb-text-btn { width: auto; padding: 0 8px !important; font-size: 11px; font-family: inherit; }
+/* ── Tooltips — body-level div, escapes overflow clipping ── */
+#ui-tooltip {
+  position: fixed;
+  background: #2c2c2e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 400;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  white-space: nowrap;
+  padding: 3px 7px;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 9999;
+}
+.tb-sep { width: 1px; height: 18px; background: #ccc9c4; margin: 0 5px; flex-shrink: 0; }
+.tb-group-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0;
+  text-transform: none; color: #1c1c1e; margin: 0 3px 0 4px; padding: 0;
+  white-space: nowrap;
+}
+.tb-label { font-size: 11px; color: #1c1c1e; white-space: nowrap; }
+.tb-fs-row { display: flex; align-items: center; gap: 4px; cursor: default; }
+.tb-fs-row .tb-label { margin: 0; flex: 0 0 auto; }
+.toolbar select {
+  width: 58px; flex-shrink: 0;
+  font-size: 12px; font-family: inherit;
+  border: 1px solid #c0bdb8; border-radius: 4px;
+  padding: 3px 4px;
+  color: #1c1c1e;
+  background: #fff;
+  cursor: pointer;
+  appearance: auto;
+}
+
+/* ── Print / PDF ── */
+@media print {
+  body > * { display: none !important; }
+  .print-target { display: block !important; position: fixed !important;
+    inset: 0 !important; width: 100vw !important; height: 100vh !important;
+    z-index: 99999 !important; background: #fff !important; }
+  .print-target svg { width: 100% !important; height: 100% !important; }
+}
+
+/* ── Chart area (column: button + canvas card) ── */
+.chart-area {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+
+/* ── Export dropdown ── */
+.export-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+  position: relative;
+  z-index: 30;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.export-wrap > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  color: #4a4a4e;
+  border: none;
+  border-radius: 6px;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.1s;
+}
+.export-wrap > button:hover { background: rgba(0,0,0,0.07); }
+.export-wrap > button:active { background: rgba(0,0,0,0.14); }
+.export-drop {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #fff;
+  border: 1px solid #dedad4;
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.13);
+  overflow: hidden;
+  min-width: 148px;
+  z-index: 20;
+}
+.export-drop.open { display: block; }
+.export-drop button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 16px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f0ede8;
+  font-size: 13px;
+  font-family: inherit;
+  color: #222;
+  cursor: pointer;
+  text-align: left;
+}
+.export-drop button:last-child { border-bottom: none; }
+.export-drop button:hover { background: #f7f5f1; }
+
+/* Read-only viewer export control: separate from the hidden editor toolbar. */
+#readonly-export {
+  display: none;
+  position: absolute;
+  top: -42px;
+  right: 10px;
+  z-index: 1000;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+body.readonly #readonly-export { display: block; }
+#readonly-export > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #ccc9c4;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.95);
+  color: #3a3a3c;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+#readonly-export > button:hover { background: #f5f4f2; }
+#readonly-export-drop {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 120px;
+  background: #fff;
+  border: 1px solid #dedad4;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.13);
+  overflow: hidden;
+}
+#readonly-export-drop.open { display: block; }
+#readonly-export-drop button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 1px solid #f0ede8;
+  background: #fff;
+  color: #222;
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+#readonly-export-drop button:last-child { border-bottom: 0; }
+#readonly-export-drop button:hover { background: #f7f5f1; }
+
+/* ── Canvas stage ──
+   The thin solid outline IS the chart-area boundary: it sits exactly on the
+   CANVAS_W × CANVAS_H drawing extent (outline, not border, so it adds no
+   layout box of its own and never shifts fitCanvas()'s arithmetic). Screen
+   only — .canvas-stage is not part of buildExportSVG(). */
+.canvas-stage {
+  position: relative;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  outline: 1px solid #b9b3a8;
+  outline-offset: 0;
+}
+.canvas-stage.resizing { outline-color: #3b7dd8; }
+.stage-rh { position: absolute; z-index: 5; box-sizing: border-box; border-radius: 2px; }
+.stage-rh-e { width:10px; top:14px; bottom:14px; right:-5px; cursor:e-resize; }
+.stage-rh-w { width:10px; top:14px; bottom:14px; left:-5px;  cursor:w-resize; }
+.stage-rh-s { height:10px; left:14px; right:14px; bottom:-5px; cursor:s-resize; }
+.stage-rh-n { height:10px; left:14px; right:14px; top:-5px;   cursor:n-resize; }
+.canvas-stage:hover .stage-rh { background: rgba(59,125,216,0.12); }
+.stage-rh:hover, .stage-rh.dragging { background: rgba(59,125,216,0.3) !important; }
+/* Corner grips — one per corner, each a small filled square sitting on the
+   boundary line so the chart area reads as a directly draggable frame. */
+.stage-resize-handle {
+  position: absolute;
+  width: 11px; height: 11px;
+  z-index: 6;
+  background: #fff;
+  border: 1px solid #b9b3a8;
+  border-radius: 2px;
+}
+.stage-resize-handle.se { right: -6px;  bottom: -6px; cursor: nwse-resize; }
+.stage-resize-handle.nw { left:  -6px;  top:    -6px; cursor: nwse-resize; }
+.stage-resize-handle.ne { right: -6px;  top:    -6px; cursor: nesw-resize; }
+.stage-resize-handle.sw { left:  -6px;  bottom: -6px; cursor: nesw-resize; }
+.stage-resize-handle:hover, .stage-resize-handle.dragging {
+  background: #3b7dd8;
+  border-color: #3b7dd8;
+}
+.side-edit-btn {
+  font-size: 11.5px; padding: 2px 7px; border-radius: 3px;
+  border: 1px solid #dedad4; background: #f7f5f1;
+  color: #555; cursor: pointer; font-family: inherit; flex-shrink: 0;
+}
+.side-edit-btn:hover { background: #ede9e2; }
+.side-edit-btn.active { background: #dceaf5; border-color: #b8cfe8; color: #1a55a0; }
+.side-edit-pane {
+  width: 0; overflow: hidden; transition: width 0.22s ease, box-shadow 0.22s ease;
+  background: #fafaf8; border-radius: 8px;
+  flex-shrink: 0; align-self: stretch;
+  display: flex; flex-direction: column;
+}
+.side-edit-pane.open {
+  width: 280px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.09), 0 6px 28px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.07);
+}
+.side-edit-inner {
+  width: 280px; padding: 14px 14px 14px;
+  display: flex; flex-direction: column; height: 100%; box-sizing: border-box;
+}
+.side-edit-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #e8e5df;
+  flex-shrink: 0;
+}
+.side-edit-label { font-size: 13px; font-weight: 500; color: #888; }
+.side-edit-actions { display: flex; gap: 5px; }
+.side-edit-fields { display: flex; flex-direction: column; gap: 9px; margin-bottom: 11px; flex-shrink: 0; }
+.side-edit-field { display: flex; flex-direction: column; gap: 3px; }
+.side-edit-fieldlabel {
+  font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase;
+  color: #999; font-weight: 600;
+}
+.side-edit-field input {
+  width: 100%; box-sizing: border-box;
+  border: 1px solid #dedad4; border-radius: 4px;
+  padding: 5px 7px; font-size: 12.5px; font-family: inherit;
+  color: #333; background: #fff;
+}
+.side-edit-field input:focus { outline: none; border-color: #b8cfe8; }
+#side-textarea {
+  flex: 1; width: 100%; box-sizing: border-box;
+  border: 1px solid #dedad4; border-radius: 4px;
+  padding: 8px; font-size: 12.5px;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  resize: none; line-height: 1.6; color: #333; background: #fff;
+}
+#side-textarea:focus { outline: none; border-color: #b8cfe8; }
+.side-save-btn {
+  font-size: 12px; padding: 3px 9px; border-radius: 3px;
+  border: 1px solid #b8cfe8; background: #dceaf5; color: #1a55a0;
+  cursor: pointer; font-family: inherit;
+}
+.side-save-btn:hover { background: #c8ddf0; }
+.side-cancel-btn {
+  font-size: 12px; padding: 3px 9px; border-radius: 3px;
+  border: 1px solid #dedad4; background: #f7f5f1; color: #555;
+  cursor: pointer; font-family: inherit;
+}
+.side-cancel-btn:hover { background: #ede9e2; }
+.side-math-hint { margin-top: 7px; font-size: 11px; color: #bbb; flex-shrink: 0; }
+.katex { font-size: 0.92em !important; }
+.katex .mtext { font-family: 'Inter', system-ui, -apple-system, sans-serif !important; }
+
+/* Read-only (published) mode. Editing chrome is hidden; the detail sidebar,
+   export menu, fullscreen and legend toggle stay live. Paired with the
+   capture-phase guard in applyReadOnly() -- the CSS removes the affordance,
+   the guard removes the behaviour. */
+body.readonly .tb-edit,
+body.readonly .toolbar {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+body.readonly #side-edit-btn,
+body.readonly #side-edit-pane,
+body.readonly .rh,
+body.readonly .stage-rh,
+body.readonly .stage-resize-handle,
+body.readonly .legend-resize-handle { display: none !important; }
+body.readonly .node { cursor: pointer !important; }
+body.readonly #canvas-legend { cursor: default !important; }
+/* The public viewer uses the document scrollbar, not a second scrollbar
+   inside the chart frame. Keep the editor's contained scrolling unchanged. */
+body.readonly {
+  height: auto;
+  min-height: 100vh;
+  overflow: auto;
+}
+body.readonly .body {
+  flex: none;
+  overflow: visible;
+}
+body.readonly .chart-area {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+body.readonly .canvas-wrap {
+  overflow: visible;
+  flex: none;
+  /* Let the read-only card contain the scaled stage. The page supplies the
+     vertical scrolling; a fixed viewport height would let a tall stage spill
+     out of the card and overlap the footer. */
+  height: auto;
+  /* Give the first fitCanvas() pass a real viewport-sized height. GitHub
+     Pages has no local saved stage state, so an entirely auto-sized wrapper
+     would otherwise be measured at padding height and shrink the chart to a
+     thumbnail. */
+  min-height: min(1231px, calc(100vh - 120px));
+}
+body.readonly .side {
+  align-self: flex-start;
+  position: sticky;
+  top: 10px;
+  height: calc(100vh - 62px);
+  max-height: calc(100vh - 62px);
+}
+
+#footer-text { outline: none; border-radius: 3px; padding: 1px 6px; min-width: 40px; }
+#footer-text[contenteditable]:hover { background: #f3f1ed; cursor: text; }
+#footer-text[contenteditable]:focus { background: #fff; box-shadow: 0 0 0 1px #3b7dd8; color: #333; }
+#footer-text:empty::before { content: 'Click to add footer text'; color: #bbb; }
+body.readonly #footer-text:empty { display: none; }

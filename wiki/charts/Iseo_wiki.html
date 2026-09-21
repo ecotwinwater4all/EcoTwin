@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lake Iseo Digital Twin — Data Flow</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='1' y='1' width='62' height='62' rx='13' fill='%23f7f5f1' stroke='%23d5d1c9' stroke-width='2'/%3E%3Cpath d='M32 32L14 14M32 32L50 14M32 32L32 52' stroke='%23b8b5b0' stroke-width='3' fill='none'/%3E%3Crect x='24' y='24' width='16' height='16' rx='4' fill='%233b7dd8'/%3E%3Ccircle cx='14' cy='14' r='6' fill='%233a8a3a'/%3E%3Ccircle cx='50' cy='14' r='6' fill='%23c89a20'/%3E%3Ccircle cx='32' cy='52' r='6' fill='%23999'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="chart.css">
+<!-- KaTeX vendored locally (v0.17.0) so the page works offline -->
+<link rel="stylesheet" href="vendor/katex/katex.min.css">
+<script defer src="vendor/katex/katex.min.js"></script>
+<script defer src="vendor/katex/contrib/auto-render.min.js"></script>
+</head>
+<body>
+
+<div class="toolbar">
+    <!-- File group: Save + Export -->
+    <button id="save-btn" class="tb-icon-btn tb-edit" onclick="saveAll()" data-tip="Save">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <path d="M2 2h8.5L13 4.5V13a1 1 0 01-1 1H3a1 1 0 01-1-1V2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        <rect x="5" y="1.5" width="4" height="3.5" rx="0.5" stroke="currentColor" stroke-width="1.3"/>
+        <rect x="4" y="8" width="7" height="4.5" rx="0.5" stroke="currentColor" stroke-width="1.3"/>
+      </svg>
+    </button>
+    <div style="position:relative;display:inline-flex;">
+      <button class="tb-icon-btn" onclick="toggleExportDrop(event)" data-tip="Export">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M7 1v8M4 6l3 3 3-3M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="export-drop" id="export-drop">
+        <button onclick="exportPNG(); closeExportDrop()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="#888" stroke-width="1.3"/><path d="M3 9l2.5-3L8 8.5 9.5 6.5 11 9" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          PNG
+        </button>
+        <button onclick="exportSVG(); closeExportDrop()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4a2 2 0 012-2h4l4 4v4a2 2 0 01-2 2H4a2 2 0 01-2-2V4z" stroke="#888" stroke-width="1.3"/><path d="M8 2v4h4" stroke="#888" stroke-width="1.3" stroke-linecap="round"/></svg>
+          SVG
+        </button>
+        <button onclick="exportPDF(); closeExportDrop()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="#888" stroke-width="1.3"/><path d="M4 5h3.5a1.5 1.5 0 010 3H4V5z" stroke="#888" stroke-width="1.2" stroke-linecap="round"/><path d="M4 9h6" stroke="#888" stroke-width="1.2" stroke-linecap="round"/></svg>
+          PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="tb-sep tb-edit"></div>
+    <!-- History group: Undo + Redo -->
+    <button id="btn-undo" class="tb-icon-btn tb-edit" onclick="undo()" disabled data-tip="Undo (Ctrl+Z)">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <path d="M2.5 5.5h6a3.5 3.5 0 010 7H5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M5.5 3L2.5 5.5l3 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <button id="btn-redo" class="tb-icon-btn tb-edit" onclick="redo()" disabled data-tip="Redo (Ctrl+Y)">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <path d="M12.5 5.5H6.5a3.5 3.5 0 000 7H9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M9.5 3l3 2.5-3 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+
+    <div class="tb-sep tb-edit"></div>
+    <!-- Insert group: Box + Text -->
+    <button class="tb-icon-btn tb-edit" onclick="showAddNodeDialog()" data-tip="Add box">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <rect x="2" y="2" width="11" height="11" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M7.5 5v5M5 7.5h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <button class="tb-icon-btn tb-edit" onclick="addFloatingText()" data-tip="Add text label">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <path d="M2.5 4h10M7.5 4v7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+
+    <div class="tb-sep tb-edit"></div>
+    <!-- Draw group: Arrow + Ortho constraint + Delete arrow -->
+    <button id="btn-add-arrow" class="tb-icon-btn tb-edit" onclick="startDrawMode()" data-tip="Draw arrow">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <path d="M3 12L12 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M12 3H7.5M12 3V7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <button id="btn-ortho-drag" class="tb-icon-btn tb-edit" onclick="toggleOrthoDrag()" data-tip="Constrain drag to H/V axis">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <path d="M3.5 11.5V3.5h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3.5 7.5h4v4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+      </svg>
+    </button>
+    <button id="btn-delete-arrow" class="tb-icon-btn tb-edit" onclick="deleteSelectedArrow()" data-tip="Delete selected arrow" style="display:none;color:#c0392b;">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <path d="M3 12L11 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.4"/>
+        <path d="M11 4H7.5M11 4V7.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
+        <path d="M2.5 11l3 3M5.5 11l-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+
+    <div class="tb-sep tb-edit"></div>
+    <!-- Format group: font sizes -->
+    <span class="tb-group-label tb-edit">Font size</span>
+    <div class="tb-fs-row tb-edit" data-tip="Arrow label font size">
+      <span class="tb-label">Label</span>
+      <select id="label-font-size">
+        <option>8</option><option>9</option><option>10</option><option>11</option>
+        <option>11.5</option><option>12</option><option>13</option>
+        <option>14</option><option>16</option><option>18</option><option selected>20</option>
+        <option>22</option><option>24</option><option>28</option><option>36</option>
+        <option>48</option><option>72</option>
+      </select>
+    </div>
+    <div class="tb-fs-row tb-edit" data-tip="Node title font size">
+      <span class="tb-label">Title</span>
+      <select id="ntitle-font-size">
+        <option>8</option><option>9</option><option>10</option><option>11</option>
+        <option>11.5</option><option>12</option><option>13</option>
+        <option>14</option><option>16</option><option>18</option><option selected>20</option>
+        <option>22</option><option>24</option><option>28</option><option>36</option>
+        <option>48</option><option>72</option>
+      </select>
+    </div>
+    <div class="tb-fs-row tb-edit" data-tip="Node subtitle font size">
+      <span class="tb-label">Subtitle</span>
+      <select id="nsub-font-size">
+        <option>8</option><option>9</option><option>10</option><option>11</option>
+        <option>11.5</option><option>12</option><option>13</option>
+        <option>14</option><option>16</option><option>18</option><option selected>20</option>
+        <option>22</option><option>24</option><option>28</option><option>36</option>
+        <option>48</option><option>72</option>
+      </select>
+    </div>
+    <div class="tb-fs-row tb-edit" data-tip="Status badge font size">
+      <span class="tb-label">Badge</span>
+      <select id="badge-font-size">
+        <option>8</option><option>9</option><option>10</option><option>11</option>
+        <option>11.5</option><option>12</option><option>13</option>
+        <option>14</option><option>16</option><option>18</option><option selected>20</option>
+        <option>22</option><option>24</option><option>28</option><option>36</option>
+        <option>48</option><option>72</option>
+      </select>
+    </div>
+
+    <div class="tb-sep tb-edit"></div>
+    <!-- Box group: exact dimensions for the open box, or every shift-selected box. -->
+    <span class="tb-group-label tb-edit">Box size</span>
+    <div class="tb-fs-row tb-edit" data-tip="Width × height of the selected box or boxes, in canvas units">
+      <input type="number" id="node-w-input" min="80" max="20000" step="1"
+             aria-label="Box width"
+             style="width:52px;font-family:inherit;font-size:11px;padding:2px 4px;
+                    border:1px solid #dedad4;border-radius:3px;background:#fff;color:#1c1c1e;">
+      <span class="tb-label">×</span>
+      <input type="number" id="node-h-input" min="36" max="20000" step="1"
+             aria-label="Box height"
+             style="width:52px;font-family:inherit;font-size:11px;padding:2px 4px;
+                    border:1px solid #dedad4;border-radius:3px;background:#fff;color:#1c1c1e;">
+    </div>
+
+    <div class="tb-sep"></div>
+    <!-- Legend group: show/hide toggle + add item (kept out of the legend's
+         own flex row so its measured width/drag-box never includes an add
+         control — see chart.md "Legend" section) -->
+    <label class="tb-fs-row" style="cursor:pointer;" data-tip="Show / hide the colour legend">
+      <input type="checkbox" id="legend-toggle" checked style="cursor:pointer;margin:0;">
+      <span class="tb-label">Legend</span>
+    </label>
+    <button class="tb-icon-btn tb-edit" onclick="addLegendItem()" data-tip="Add legend item" style="font-size:16px;font-weight:600;">+</button>
+
+    <div class="tb-sep tb-edit"></div>
+    <!-- Chart area group: exact dimensions of the bordered drawing region, the
+         typed alternative to dragging the stage's edge/corner grips. -->
+    <span class="tb-group-label tb-edit">Chart area</span>
+    <div class="tb-fs-row tb-edit" data-tip="Width × height of the bordered chart area, in canvas units">
+      <input type="number" id="canvas-w-input" min="300" max="20000" step="10"
+             style="width:60px;font-family:inherit;font-size:11px;padding:2px 4px;
+                    border:1px solid #dedad4;border-radius:3px;background:#fff;color:#1c1c1e;">
+      <span class="tb-label">×</span>
+      <input type="number" id="canvas-h-input" min="300" max="20000" step="10"
+             style="width:60px;font-family:inherit;font-size:11px;padding:2px 4px;
+                    border:1px solid #dedad4;border-radius:3px;background:#fff;color:#1c1c1e;">
+    </div>
+    <button class="tb-icon-btn tb-text-btn tb-edit" onclick="fitCanvasToContent()"
+            data-tip="Shrink-wrap the chart area around its content">Fit</button>
+
+  <!-- View group: Fullscreen alone, pushed to the right -->
+  <div class="export-wrap">
+    <button id="btn-fullscreen" onclick="toggleFullscreen()" data-tip="Fullscreen">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path id="fs-icon-path" d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9" stroke="#1c1c1e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+
+</div><!-- /toolbar -->
+
+<div class="body">
+
+  <div class="chart-area">
+
+  <div id="readonly-export">
+    <button onclick="toggleReadonlyExport(event)" aria-label="Export chart">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <path d="M7 1v8M4 6l3 3 3-3M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Download</span>
+    </button>
+    <div id="readonly-export-drop">
+      <button onclick="exportPNG(); closeReadonlyExport()">PNG</button>
+      <button onclick="exportSVG(); closeReadonlyExport()">SVG</button>
+      <button onclick="exportPDF(); closeReadonlyExport()">PDF</button>
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+  <div class="canvas-stage" id="canvas-stage">
+  <div class="canvas" id="canvas">
+  <div id="canvas-margin-guide"></div>
+  <div class="center-snap-guide vertical" id="center-snap-guide-x"></div>
+  <div class="center-snap-guide horizontal" id="center-snap-guide-y"></div>
+  <svg id="svgl" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- blue: atmospheric forcing -->
+      <marker id="mbl" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0,0 8,3 0,6" fill="#5b9bd5"/></marker>
+      <!-- teal: hydrological forcing -->
+      <marker id="mtl" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0,0 8,3 0,6" fill="#2e9688"/></marker>
+      <!-- orange: validation -->
+      <marker id="mor" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0,0 8,3 0,6" fill="#ed7d31"/></marker>
+      <!-- green: assimilation -->
+      <marker id="mgr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0,0 8,3 0,6" fill="#70ad47"/></marker>
+      <!-- purple: model cascade -->
+      <marker id="mpu" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0,0 8,3 0,6" fill="#7030a0"/></marker>
+    </defs>
+  </svg>
+
+  <!-- DATA SOURCES (top row) -->
+  <div class="node" id="N-icon" style="width:180px;" onclick="open_panel('icon')">
+    <div class="node-head"><div class="dot"></div><span class="ntitle"></span><span class="badge"></span></div>
+    <div class="nsub"></div>
+  </div>
+
+  <div class="node src" id="N-mon" style="width:200px;" onclick="open_panel('mon')">
+    <div class="node-head"><div class="dot"></div><span class="ntitle"></span><span class="badge"></span></div>
+    <div class="nsub"></div>
+  </div>
+
+  <!-- MODELS -->
+  <div class="node" id="N-aem" style="width:250px;" onclick="open_panel('aem')">
+    <div class="node-head"><div class="dot"></div><span class="ntitle"></span><span class="badge"></span></div>
+    <div class="nsub"></div>
+  </div>
+
+  <div class="node prog" id="N-wsm" style="width:180px;" onclick="open_panel('wsm')">
+    <div class="node-head"><div class="dot"></div><span class="ntitle"></span><span class="badge"></span></div>
+    <div class="nsub"></div>
+  </div>
+
+  <div class="node plan" id="N-tbm" style="width:195px;" onclick="open_panel('tbm')">
+    <div class="node-head"><div class="dot"></div><span class="ntitle"></span><span class="badge"></span></div>
+    <div class="nsub"></div>
+  </div>
+
+  <div class="node plan" id="N-eco" style="width:185px;" onclick="open_panel('eco')">
+    <div class="node-head"><div class="dot"></div><span class="ntitle"></span><span class="badge"></span></div>
+    <div class="nsub"></div>
+  </div>
+
+  <!-- VALIDATION / DATA ASSIMILATION -->
+  <div class="node prog" id="N-vda" style="width:250px;" onclick="open_panel('vda')">
+    <div class="node-head"><div class="dot"></div><span class="ntitle"></span><span class="badge"></span></div>
+    <div class="nsub"></div>
+  </div>
+
+  <!-- OUTPUTS -->
+  <div class="node" id="N-arc" style="width:280px;" onclick="open_panel('arc')">
+    <div class="node-head"><div class="dot"></div><span class="ntitle"></span><span class="badge"></span></div>
+    <div class="nsub"></div>
+  </div>
+
+  <div class="node" id="N-dash" style="width:160px;" onclick="open_panel('dash')">
+    <div class="node-head"><div class="dot"></div><span class="ntitle"></span><span class="badge"></span></div>
+    <div class="nsub"></div>
+  </div>
+
+  <div class="node plan" id="N-stk" style="width:155px;" onclick="open_panel('stk')">
+    <div class="node-head"><div class="dot"></div><span class="ntitle"></span><span class="badge"></span></div>
+    <div class="nsub"></div>
+  </div>
+
+  </div><!-- /canvas -->
+
+  <div id="canvas-legend" title="Drag to move · Double-click a label to rename · Click a swatch to recolour · Drag right edge to resize"
+    style="position:absolute;left:50%;bottom:14px;transform:translateX(-50%);
+    z-index:4;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 18px;
+    pointer-events:auto;cursor:move;
+    background:rgba(255,255,255,0.88);border:1px solid #dedad4;border-radius:5px;
+    padding:8px 14px;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#555;">
+  </div>
+
+  <div class="stage-rh stage-rh-n" data-dir="n" title="Drag to resize"></div>
+  <div class="stage-rh stage-rh-s" data-dir="s" title="Drag to resize"></div>
+  <div class="stage-rh stage-rh-e" data-dir="e" title="Drag to resize"></div>
+  <div class="stage-rh stage-rh-w" data-dir="w" title="Drag to resize"></div>
+  <div class="stage-resize-handle se" id="stage-resize-handle" data-dir="se" title="Drag to resize the chart area"></div>
+  <div class="stage-resize-handle sw" data-dir="sw" title="Drag to resize the chart area"></div>
+  <div class="stage-resize-handle ne" data-dir="ne" title="Drag to resize the chart area"></div>
+  <div class="stage-resize-handle nw" data-dir="nw" title="Drag to resize the chart area"></div>
+
+  </div><!-- /canvas-stage -->
+
+  </div><!-- /canvas-wrap -->
+
+  </div><!-- /chart-area -->
+
+  <div class="split-handle" id="split-handle" title="Drag to resize"></div>
+
+  <!-- SIDE PANEL -->
+  <div class="side" id="side">
+    <div class="side-inner" id="side-inner">
+      <div class="side-header">
+        <div>
+          <div class="side-title" id="side-title"></div>
+        </div>
+        <span class="side-badge" id="side-badge"></span>
+        <button class="side-edit-btn" id="side-edit-btn" onclick="toggleSidebarEdit()">Edit</button>
+        <div class="side-close" onclick="close_panel()">×</div>
+      </div>
+      <div id="side-content"></div>
+    </div>
+  </div>
+
+  <!-- EDIT PANE -->
+  <div class="side-edit-pane" id="side-edit-pane">
+    <div class="side-edit-inner">
+      <div class="side-edit-header">
+        <span class="side-edit-label">Editor</span>
+        <div class="side-edit-actions">
+          <button class="side-save-btn" onclick="saveSidebarEdit()">Save</button>
+          <button class="side-cancel-btn" onclick="cancelSidebarEdit()">Close</button>
+        </div>
+      </div>
+      <div class="side-edit-fields" id="side-edit-fields">
+        <label class="side-edit-field">
+          <span class="side-edit-fieldlabel">Title</span>
+          <input type="text" id="side-title-input" oninput="onSidebarMetaInput()" placeholder="Box title">
+        </label>
+        <label class="side-edit-field">
+          <span class="side-edit-fieldlabel">Status banner</span>
+          <input type="text" id="side-badge-input" oninput="onSidebarMetaInput()" placeholder="e.g. Planned">
+        </label>
+      </div>
+      <textarea id="side-textarea" oninput="onSidebarInput()" placeholder="Write content here.&#10;&#10;$x^2$ inline math&#10;$$\frac{a}{b}$$ display math"></textarea>
+      <div class="side-math-hint"># Heading · **bold** · *italic* · `code` · [text](url) · - list · --- · $…$ math · Ctrl+S</div>
+    </div>
+  </div>
+
+</div><!-- /body -->
+<div id="ui-tooltip"></div>
+
+<footer>
+  <span id="footer-text">Università di Brescia · DICATAM · Yisihak Kassa · 2026</span>
+</footer>
+
+<script id="chart-document" type="application/json">
+{
+  "schemaVersion": 1,
+  "data": {
+    "icon": {
+      "title": "NWP",
+      "badge": "Implemented",
+      "bcls": "impl",
+      "nsub": "ICON-2I · GRIB"
+    },
+    "mon": {
+      "title": "Monitoring network",
+      "badge": "Implemented",
+      "bcls": "impl",
+      "nsub": "UNIBS stations (Castro, Iseo) · ARPA Darfo"
+    },
+    "aem": {
+      "title": "AEM3D lake model",
+      "badge": "Implemented",
+      "bcls": "impl",
+      "nsub": "3-D hydro · 35 MET zones · twice-daily"
+    },
+    "wsm": {
+      "title": "Watershed model",
+      "badge": "Implemented",
+      "bcls": "impl",
+      "nsub": "Distributed model"
+    },
+    "tbm": {
+      "title": "Transport & biogeochem model",
+      "badge": "Planned",
+      "bcls": "plan",
+      "nsub": "sediment · nutrients · tracers"
+    },
+    "eco": {
+      "title": "Ecosystem services",
+      "badge": "Planned",
+      "bcls": "plan",
+      "nsub": "DO · algae · habitat · alerts"
+    },
+    "vda": {
+      "title": "Validation & data assimilation",
+      "badge": "In progress",
+      "bcls": "prog",
+      "nsub": "Model–observation comparison\u003cbr>State correction (planned)"
+    },
+    "arc": {
+      "title": "Forecast archive",
+      "badge": "Implemented",
+      "bcls": "impl",
+      "nsub": "72-h T · velocity · level · CF-NetCDF"
+    },
+    "dash": {
+      "title": "Dashboard",
+      "badge": "Implemented",
+      "bcls": "impl",
+      "nsub": "React · FastAPI · D3.js"
+    },
+    "stk": {
+      "title": "Stakeholders",
+      "badge": "Planned",
+      "bcls": "plan",
+      "nsub": "alerts · scenarios · dam control"
+    }
+  },
+  "canvas": {
+    "w": 1622,
+    "h": 1231,
+    "manual": false,
+    "scale": 1
+  },
+  "positions": {
+    "icon": {
+      "x": 1229,
+      "y": 64,
+      "w": 300,
+      "h": 150
+    },
+    "mon": {
+      "x": 81,
+      "y": 64,
+      "w": 320,
+      "h": 150
+    },
+    "aem": {
+      "x": 678,
+      "y": 560,
+      "w": 300,
+      "h": 98
+    },
+    "wsm": {
+      "x": 91,
+      "y": 552,
+      "w": 300,
+      "h": 114
+    },
+    "tbm": {
+      "x": 1219,
+      "y": 572,
+      "w": 320,
+      "h": 116
+    },
+    "eco": {
+      "x": 678,
+      "y": 752,
+      "w": 300,
+      "h": 114
+    },
+    "vda": {
+      "x": 670,
+      "y": 211,
+      "w": 316,
+      "h": 150
+    },
+    "stk": {
+      "x": 677,
+      "y": 982,
+      "w": 302,
+      "h": 98
+    }
+  },
+  "labelPositions": {
+    "arrow_1780231744722_lbl": {
+      "x": 833.4323933023496,
+      "y": 1073.5590516528734,
+      "r": 0
+    },
+    "arrow_1780244085872_lbl": {
+      "x": 580.7997727346083,
+      "y": 633.6963645441867,
+      "r": 270
+    },
+    "arrow_1780247906340_lbl": {
+      "x": 483.62867721413926,
+      "y": 712.4739816043522,
+      "r": 0
+    },
+    "arrow_1780758105910_lbl": {
+      "x": 1040.5980221817035,
+      "y": 645.675881932744,
+      "r": 270
+    },
+    "arrow_1783328888956_lbl": {
+      "x": 901.5566464548671,
+      "y": 649.1795881078518,
+      "r": 270
+    },
+    "arrow_1787157009436_lbl": {
+      "x": 520.5730341451522,
+      "y": 175.15897806187238,
+      "r": 0
+    },
+    "arrow_1787157209542_lbl": {
+      "x": 1078.2364161696605,
+      "y": 183.85213240868381,
+      "r": 0
+    },
+    "arrow_1787157290240_lbl": {
+      "x": 1007.3193444136912,
+      "y": 431.2603593578145,
+      "r": 0
+    },
+    "arrow_1787157559462_lbl": {
+      "x": 1192.5593007053048,
+      "y": 844.3061249638757,
+      "r": 0
+    },
+    "arrow_1787158048524_lbl": {
+      "x": 445.9616788321167,
+      "y": 791.219432806334,
+      "r": 0
+    },
+    "arrow_1787158250409_lbl": {
+      "x": 911.4147419423563,
+      "y": 716.2996198030719,
+      "r": 0
+    },
+    "arrow_1787158357139_lbl": {
+      "x": 1098.0219717738926,
+      "y": 655.1644237079252,
+      "r": 0
+    },
+    "arrow_1787158858606_lbl": {
+      "x": 350.8500683504452,
+      "y": 285.9522068709198,
+      "r": 0
+    },
+    "arrow_1787158917851_lbl": {
+      "x": 719.4895090919235,
+      "y": 431.18222106206315,
+      "r": 0
+    },
+    "arrow_1787158961352_lbl": {
+      "x": 1213.258446116651,
+      "y": 287.32959612128394,
+      "r": 0
+    },
+    "arrow_1787162081123_lbl": {
+      "x": 498.54723335878685,
+      "y": 650.0048929231065,
+      "r": 0
+    },
+    "arrow_1787158152295_lbl": {
+      "x": 953.4784418013293,
+      "y": 909.9291952369858,
+      "r": 0
+    },
+    "arrow_1787597335761_lbl": {
+      "x": 441.47804516423355,
+      "y": 823.8289803971813,
+      "r": 0
+    }
+  },
+  "deletedNodes": [
+    "cnode_1783320985926",
+    "cnode_1780556617482",
+    "arc",
+    "dash",
+    "cnode_1787600547685"
+  ],
+  "customNodes": {},
+  "textOverrides": {
+    "aem": {
+      "title": "Lake model",
+      "badge": "Implemented",
+      "bcls": "impl",
+      "nsub": "AEM3D, NetCDF "
+    },
+    "wsm": {
+      "title": "Watershed model",
+      "badge": "In progress",
+      "bcls": "prog",
+      "nsub": "Distributed model"
+    },
+    "mon": {
+      "title": "Monitoring network",
+      "badge": "Implemented",
+      "bcls": "impl",
+      "nsub": "UNIBS & ARPA stations, \nsatellite, webcam, sensors"
+    },
+    "arc": {
+      "title": "State and forecast archive",
+      "badge": "Implemented",
+      "bcls": "impl",
+      "nsub": "NetCDF . Continuously updated . Keeps track of state history"
+    },
+    "tbm": {
+      "title": "Transport model",
+      "badge": "In progress",
+      "bcls": "prog",
+      "nsub": "Lagrangian particle tracking"
+    },
+    "eco": {
+      "title": "Ecosystem services",
+      "badge": "Planned",
+      "bcls": "plan",
+      "nsub": "Stakeholder variables"
+    },
+    "dash": {
+      "title": "GUI",
+      "badge": "In progress",
+      "bcls": "prog",
+      "nsub": "User friendly"
+    },
+    "stk": {
+      "title": "Stakeholders",
+      "badge": "Planned",
+      "bcls": "plan",
+      "nsub": "Dashboard, alerts, scenarios"
+    },
+    "vda": {
+      "title": "Data assimilation & downscaling",
+      "badge": "Planned",
+      "bcls": "plan",
+      "nsub": "Model–observation comparison\nState correction"
+    },
+    "icon": {
+      "title": "Weather forecast model",
+      "badge": "Implemented",
+      "bcls": "impl",
+      "nsub": "NWP (ICON-2I, WRF)"
+    }
+  },
+  "styleOverrides": {
+    "wsm": {
+      "dot": "#ed7d31",
+      "border": "#f5c08a",
+      "bg": "#fef0e0"
+    },
+    "aem": {
+      "dot": "#ed7d31",
+      "border": "#f5c08a",
+      "bg": "#fef0e0"
+    },
+    "eco": {
+      "dot": "#ed7d31",
+      "border": "#f5c08a",
+      "bg": "#fef0e0",
+      "label": "Model layer"
+    },
+    "tbm": {
+      "dot": "#ed7d31",
+      "border": "#f5c08a",
+      "bg": "#fef0e0",
+      "label": "Model layer"
+    },
+    "mon": {
+      "dot": "#3b7dd8",
+      "border": "#b8cfe8",
+      "bg": "#dceaf5"
+    },
+    "vda": {
+      "dot": "#3b7dd8",
+      "border": "#b8cfe8",
+      "bg": "#dceaf5"
+    },
+    "dash": {
+      "dot": "#7030a0",
+      "border": "#c4a8d8",
+      "bg": "#f0eaf7"
+    },
+    "stk": {
+      "dot": "#70ad47",
+      "border": "#b0d888",
+      "bg": "#e8f5d8",
+      "label": "Water quality"
+    },
+    "cnode_1780556617482": {
+      "dot": "#5b9bd5",
+      "border": "#aac8ea",
+      "bg": "#ddeaf7",
+      "label": "Data layer"
+    },
+    "cnode_1783320985926": {
+      "dot": "#ed7d31",
+      "border": "#f5c08a",
+      "bg": "#fef0e0",
+      "label": "Model layer"
+    }
+  },
+  "sidebar": {
+    "icon": "# Source\nMeteoHub's ICON-2I regional NWP model, 2.2 km horizontal resolution over Italy. Issued 2× daily (00, 12 UTC), 72-hour forecast horizon. Accessed via MeteoHub API.\n\nICON-2I model:\n- [ItaliaMeteo short-term forecasts](https://www.agenziaitaliameteo.it/en/meteorology/forecasts/short-term-forecasts-italy/)\n- [ICON model](https://www.icon-model.org/)\n\nWRF model:\n- [MISTRAL WRF forecasts](https://mistral-cat.hpc.cineca.it/dataset/previsioni-meteorologiche-modello-wrf)\n- [WRF users](https://www2.mmm.ucar.edu/wrf/users/)\n\n# Target outputs\n- Air temperature at 2m (°C)\n- Wind speed at 10m (m/s)\n- Wind direction at 10m (°)\n- Shortwave radiation at surface (W/m²)\n- Cloud cover (%)\n- Precipitation (mm/h)\n- Relative humidity (%)\n- Pressure at surface (hPa)\n\n# Role\nAtmospheric forcing for AEM3D. Also displayed in a user-friendly way to stakeholders on the dashboard.\n\n# Format\nGRIB2 download → NetCDF extraction (cfgrib) → AEM3D MET `.dat` files. Bilinear interpolation to the lake grid. Filtered by forecast reference time.",
+    "mon": "# Source\n1. Lake stations operated by the University of Brescia: Lake floating station (LS), Castro (eastern shore, SS1) and Iseo (southern shore SS2). Accessed via FTP.\n\nLS (1/min-1/10min): wind speed and direction (1/min), lake temperature profile (1/10min), net total radiation (1/min). Details at: [LS station](https://hydraulics.unibs.it/hydraulics/il-monitoraggio-del-lago-diseo/lsd/)\n\nSS1 (1/min): wind speed and direction, lake's level, air temperature and relative humidity, short wave radiation, atmospheric pressure. Details at: [SS1 station](https://hydraulics.unibs.it/hydraulics/il-monitoraggio-del-lago-diseo/ss1/)\n\nSS2 (1/min):  wind speed and direction, lake's level, air temperature and relative humidity, short wave radiation, atmospheric pressure. Details at: [SS2 station](https://hydraulics.unibs.it/hydraulics/il-monitoraggio-del-lago-diseo/ss2/)\n\n2. River gauge (ARPA Lombardia)\n\nDarfo (1/10 min): Hydrometric level gauge on the Oglio River at Darfo, upstream of Lake Iseo. Level converted to discharge via a calibrated rating curve. Data are available at: [ARPA Lombardia data request](https://www.arpalombardia.it/temi-ambientali/meteo-e-clima/form-richiesta-dati/)\n\n3. Remote observations\n\n- Optical images provided by Sentinel 2 and Sentinel 3 (≈1/2 days)\n- Webcam images framing the northern part of the lake (1/15min).\n\n# Target outputs\n- Wind speed (m/s) and direction (°)\n- Air temperature (°C) and relative humidity (%)\n- Short and long wave radiation (W/m2)\n- Water temperature profile along the water column (°C)\n- River discharge (m3/s)\n- Optical images of the surface of the lake\n\n# Roles\n**NWP bias assessment:** Station wind, radiation, and temperature are compared against ICON-2I fields at the same locations. This reveals systematic NWP biases driven by local topography not resolved by the 2 km grid and allow a proper elaboration of the atmosphetic forcing to optimize the simulation of lake circulation\n\n**Initial conditions:** Water temperature profile is used to initialize AEM3D and remote observations are elaborated by specific models to provide the initial debris distribution for the transport models.\n\n**Model evaluation:** Observed lake surface temperatures are compared against AEM3D simulated profiles to assess model performance.",
+    "aem": "# Source\nAEM3D (Aquatic Ecosystem Model 3D) is a numerical modeling tool used to simulate hydrodynamic and thermodynamic processes in aquatic systems. AEM3D accounts for environmental forcing such as inflows, thermal and mechanical fluxes at the surface.\n\nFull documentation is made available at [AEM3D documentation](https://www.hydronumerics.com.au/software/aquatic-ecosystem-model-3d)\n\n# Target inputs\n- Lake's bathymetry\n- Air temperature at 2m (°C)\n- Wind speed at 10m (m/s)\n- Wind direction at 10m (°)\n- Shortwave radiation at surface (W/m²)\n- Cloud cover (%)\n- Precipitation (mm/h)\n- Relative humidity (%)\n- Inflows discharge (m3/s), temperature (°C) and turbidity (FTU)\n- Outflow discharge (m3/s)\n- Initial condition for temperature (°C) and turbidity (FTU)\n\n# Target outputs\n- Water velocities (m/s)\n- Water temperature (°C)\n- Turbidity (FTU)\n- Water level (m)\n\n# Format and operational mode\nTwice-daily forecast cycle driven by ICON-2I (00 and 12 UTC). Two-phase execution: state advance to next issue time, then 72-hour forecast product. Warm-start from restart file preserves thermal stratification.\n\n# Role\nProvides the input to the transport model and to the module aimed at quantifying the ecosystem services.",
+    "wsm": "# Source\nThe implemented watershed model is a simplified, computationally efficient tool for the preliminary assessment of river water quality, particularly suited to poorly monitored basins and stable low-flow periods. Starting from a digital elevation model (DEM), it automatically reconstructs the drainage network and its geometric and topological properties, representing it as a non-binary tree. Recursive procedures are then used to calculate discharge, hydraulic characteristics, mass and energy balances, and chemical processes throughout the network. The model estimates natural discharge from the drained area, while empirical relationships determine channel width, depth, velocity, and bed roughness. Users must provide meteorological data, water-quality parameters, and information about pollutant sources, discharges, withdrawals, and artificial diversions.\n\nPilotti, M. and Rosso, R. (1990) “SHELL: a general framework for modelling the distributed response of a drainage basin”, Proceedings of the Eighth International Conference on Computational Methods in Water Resources, Held in Venice, Italy, June 11-15, 1990.\n\nPilotti, M. Chapra S. C. and Valerio, G. (2019). Steady-State Distributed Modeling of Dissolved Oxygen in Data-Poor, Sewage Dominated River Systems Using Drainage Networks, Environmental Modeling and Software, 111,  153-169, [DOI](https://doi.org/10.1016/j.envsoft.2018.08.027).\n\n# Target inputs\n- gridded precipitation (mm/h)\n- air temperature (°C)\n- watershed initial conditions\n\n# Target outputs\n- discharge Q(t) (m³/s)\n- inflow temperature (°C)\n- suspended sediment (g/L)\n\n# Role\nHydrological forcing for AEM3D.",
+    "tbm": "# Target inputs\n- Water velocities (m/s)\n- Water temperature (°C)\n- Turbidity (FTU)\n- Optical images of the surface waters\n- Water level (m)\n\n# Target outputs\n- Map of the surface distribution of the target variables (turbidity, macrophytes, floating debris etc.)\n\n# Role\nProvides the input to the module aimed at quantifying the ecosystem services",
+    "eco": "# Status\nPlanned. Awaiting transport model outputs and water quality module coupling.\n\n# Target inputs\n- Wind speed and direction\n- Water velocities (m/s)\n- Water temperature (°C)\n- Turbidity map (FTU)\n- Maps of floating debris\n\n# Target output\n- Water level threshold and wind alerts\n- Areas with the highest probability of floating debris accumulation, enabling targeted clean-up activities.\n- Turbidity and temperature hotspots.",
+    "vda": "# Purpose\nCorrects the model with new observations. Receives observations from the monitoring network and NWP fields from ICON-2I, compares them against AEM3D simulated outputs, and feeds corrected state back into the model once a DA scheme is operational.\n\n# Implemented: observation comparison\nStation wind, radiation, and temperature (UNIBS) are compared against co-located ICON-2I NWP fields, quantifying systematic biases, especially for wind in complex topography. Simulated lake temperature profiles are compared against Castro station measurements to assess AEM3D thermal skill.\n\n- NWP bias (wind, radiation, T)\n- T profile skill score\n- stratification timing\n\n# Planned: data assimilation\nObserved lake surface temperatures and met variables will be used to correct AEM3D initial conditions. This reduces drift between forecast cycles and improves restart state accuracy. Method to be defined (e.g. nudging, optimal interpolation, EnKF).\n\n# Outputs\nSkill scores and uncertainty bounds → Dashboard (so stakeholders see model reliability). Corrected initial conditions → AEM3D (closes the digital twin feedback loop).",
+    "arc": "# Contents\n3-D temperature (°C)3-D velocity (m/s)water level (m a.s.l.)station depth profiles.\n\n# Structure\nNetCDF files per station, indexed by `forecast_reference_time` and `forecast_period`. Each twice-daily operational run appends one entry.\n\n# Role\nPersistent record of all operational forecast runs. Source for dashboard queries and validation against station observations.\n\n# Links\n[Wiki page](https://github.com/giuliavalerio/PROVA/wiki/Aquatic-Ecosystem-model-of-Lake-Iseo)\n",
+    "dash": "# Stack\nReact + Vite + D3.js frontend, FastAPI backend. Reads forecast archive NetCDF directly, without an intermediate database for simulation data.\n\n# Current views\n- Depth–time temperature heatmap (click to select time/depth)\n- Vertical temperature profile at selected time\n- Surface temperature time series\n- Depth-specific temperature time series\n\n# Aggregation\nRaw / daily / weekly / monthly with avg / min / max / median, all computed in the browser.\n\n# Future additions\nDO profiles, turbidity, velocity maps, scenario comparison, threshold alerts.",
+    "stk": "# Status\nPlanned. Engagement begins once the dashboard prototype is ready.\n\n# Groups\n- Dam operators: real-time level forecasts and gate scenario testing\n- ARPA Lombardia: model outputs and validation data sharing\n- Water utilities: intake temperature and level forecasts\n- Municipal authorities: flood and drought early warning\n\n# Feedback loop\nDam gate control decisions translate back into AEM3D boundary conditions (offtake rates, outlet levels), closing the operational digital twin loop.",
+    "cnode_1780556617482": "# Status\nPlanned. This statistical downscaling layer sits between the NWP model and the lake and watershed models.\n\n# Purpose\nRefine coarse ICON-2I fields toward local conditions the 2 km grid cannot resolve, such as wind channelling near Iseo, using monitoring-network observations as a reference.\n\n# Approach\nStatistical / empirical correction. Method to be defined.",
+    "_overview_": "Click any box to view its description.",
+    "_overview_title_": "Lake Iseo digital twin"
+  },
+  "arrows": [
+    {
+      "id": "arrow_1787157009436",
+      "src": {
+        "node": "mon",
+        "fx": 1,
+        "fy": 0.527964240077136
+      },
+      "dst": {
+        "node": "vda",
+        "fx": 0.26201132398988675,
+        "fy": 0
+      },
+      "waypoints": [
+        [
+          752.7955736376815,
+          143.19465146173587
+        ]
+      ],
+      "color": "#5b9bd5",
+      "marker": "mbl",
+      "dashed": false,
+      "label": {
+        "text": "Observed states,\nMet data",
+        "key": "arrow_1787157009436_lbl"
+      }
+    },
+    {
+      "id": "arrow_1787157209542",
+      "src": {
+        "node": "icon",
+        "fx": 0,
+        "fy": 0.5406325425890671
+      },
+      "dst": {
+        "node": "vda",
+        "fx": 0.6749051447436206,
+        "fy": 0
+      },
+      "waypoints": [
+        [
+          883.2700481858509,
+          145.0948967951781
+        ]
+      ],
+      "color": "#5b9bd5",
+      "marker": "mbl",
+      "dashed": false,
+      "label": {
+        "text": "Met forecast",
+        "key": "arrow_1787157209542_lbl"
+      }
+    },
+    {
+      "id": "arrow_1787157290240",
+      "src": {
+        "node": "vda",
+        "fx": 0.8026642207987474,
+        "fy": 1
+      },
+      "dst": {
+        "node": "aem",
+        "fx": 0.8188061191061914,
+        "fy": 0
+      },
+      "waypoints": [],
+      "color": "#5b9bd5",
+      "marker": "mbl",
+      "dashed": false,
+      "label": {
+        "text": "Met forcing +\ninitial condition",
+        "key": "arrow_1787157290240_lbl"
+      }
+    },
+    {
+      "id": "arrow_1787157398176",
+      "src": {
+        "arrow": "arrow_1787157290240",
+        "seg": 0,
+        "t": 0.6280436747535081
+      },
+      "dst": {
+        "node": "tbm",
+        "fx": 0.33045975418855766,
+        "fy": 0
+      },
+      "waypoints": [
+        [
+          1324.7472522762,
+          485.9884518337251
+        ]
+      ],
+      "color": "#5b9bd5",
+      "marker": "mbl",
+      "dashed": false,
+      "label": {
+        "text": "",
+        "key": "arrow_1787157398176_lbl"
+      }
+    },
+    {
+      "id": "arrow_1787157491541",
+      "src": {
+        "arrow": "arrow_1787157290240",
+        "seg": 0,
+        "t": 0.6294443913385236
+      },
+      "dst": {
+        "node": "wsm",
+        "fx": 0.5712913086427883,
+        "fy": 0
+      },
+      "waypoints": [
+        [
+          262.38741031976474,
+          486.2671652513841
+        ]
+      ],
+      "color": "#5b9bd5",
+      "marker": "mbl",
+      "dashed": false,
+      "label": {
+        "text": "",
+        "key": "arrow_1787157491541_lbl"
+      }
+    },
+    {
+      "id": "arrow_1787157559462",
+      "src": {
+        "node": "tbm",
+        "fx": 0.4893263587416186,
+        "fy": 1
+      },
+      "dst": {
+        "node": "eco",
+        "fx": 1,
+        "fy": 0.5231565666335659
+      },
+      "waypoints": [
+        [
+          1375.5845517292216,
+          811.6398164456979
+        ]
+      ],
+      "color": "#ed7d31",
+      "marker": "mor",
+      "dashed": false,
+      "label": {
+        "text": "Turbidity +\nFloating debris",
+        "key": "arrow_1787157559462_lbl"
+      }
+    },
+    {
+      "id": "arrow_1787158152295",
+      "src": {
+        "node": "eco",
+        "fx": 0.4868499573113667,
+        "fy": 1
+      },
+      "dst": {
+        "node": "stk",
+        "fx": 0.48693709765865373,
+        "fy": 0
+      },
+      "waypoints": [],
+      "color": "#ed7d31",
+      "marker": "mor",
+      "dashed": false,
+      "label": {
+        "text": "Target variables \n(e.g. debris distribution \nmap)",
+        "key": "arrow_1787158152295_lbl"
+      }
+    },
+    {
+      "id": "arrow_1787158250409",
+      "src": {
+        "node": "aem",
+        "fx": 0.5296543346692859,
+        "fy": 1
+      },
+      "dst": {
+        "node": "eco",
+        "fx": 0.5296543346692859,
+        "fy": 0
+      },
+      "waypoints": [],
+      "color": "#ed7d31",
+      "marker": "mor",
+      "dashed": false,
+      "label": {
+        "text": "Water temp.",
+        "key": "arrow_1787158250409_lbl"
+      }
+    },
+    {
+      "id": "arrow_1787158357139",
+      "src": {
+        "node": "aem",
+        "fx": 1,
+        "fy": 0.6389099336242218
+      },
+      "dst": {
+        "node": "tbm",
+        "fx": 0,
+        "fy": 0.4363204519382943
+      },
+      "waypoints": [],
+      "color": "#ed7d31",
+      "marker": "mor",
+      "dashed": false,
+      "label": {
+        "text": "Temp. and\nvelocity fields",
+        "key": "arrow_1787158357139_lbl"
+      }
+    },
+    {
+      "id": "arrow_1787158858606",
+      "src": {
+        "node": "wsm",
+        "fx": 0.4580977485070401,
+        "fy": 0
+      },
+      "dst": {
+        "node": "vda",
+        "fx": 0,
+        "fy": 0.29457270851539213
+      },
+      "waypoints": [
+        [
+          228.4293389349606,
+          255.20674117979576
+        ]
+      ],
+      "color": "#ed7d31",
+      "marker": "mor",
+      "dashed": false,
+      "label": {
+        "text": "Model outputs\n(e.g. discharge)",
+        "key": "arrow_1787158858606_lbl"
+      }
+    },
+    {
+      "id": "arrow_1787158917851",
+      "src": {
+        "node": "aem",
+        "fx": 0.5025198111846783,
+        "fy": 0
+      },
+      "dst": {
+        "node": "vda",
+        "fx": 0.5023924424856687,
+        "fy": 1
+      },
+      "waypoints": [],
+      "color": "#ed7d31",
+      "marker": "mor",
+      "dashed": false,
+      "label": {
+        "text": "Outputs\n(e.g. Temp, velocity)",
+        "key": "arrow_1787158917851_lbl"
+      }
+    },
+    {
+      "id": "arrow_1787158961352",
+      "src": {
+        "node": "tbm",
+        "fx": 0.46816450409424554,
+        "fy": 0
+      },
+      "dst": {
+        "node": "vda",
+        "fx": 1,
+        "fy": 0.28063313029951376
+      },
+      "waypoints": [
+        [
+          1368.812763911163,
+          253.11580424150537
+        ]
+      ],
+      "color": "#ed7d31",
+      "marker": "mor",
+      "dashed": false,
+      "label": {
+        "text": "Outputs\n(e.g. Turbidity)",
+        "key": "arrow_1787158961352_lbl"
+      }
+    },
+    {
+      "id": "arrow_1787162081123",
+      "src": {
+        "node": "wsm",
+        "fx": 1,
+        "fy": 0.5659633733368782
+      },
+      "dst": {
+        "node": "aem",
+        "fx": 0,
+        "fy": 0.5767331271535512
+      },
+      "waypoints": [],
+      "color": "#ed7d31",
+      "marker": "mor",
+      "dashed": false,
+      "label": {
+        "text": "Inflow boundary\nconditions",
+        "key": "arrow_1787162081123_lbl"
+      }
+    },
+    {
+      "id": "arrow_1787597335761",
+      "src": {
+        "node": "stk",
+        "fx": 0,
+        "fy": 0.5876717675796818
+      },
+      "dst": {
+        "node": "vda",
+        "fx": 0,
+        "fy": 0.6979115275589473
+      },
+      "waypoints": [
+        [
+          596.4762203467153,
+          1040.0918648364768
+        ],
+        [
+          596.4762203467153,
+          315.7075699942525
+        ]
+      ],
+      "color": "#70ad47",
+      "marker": "mgr",
+      "dashed": false,
+      "label": {
+        "text": "Changed state \n(e.g. floating debris locations\nafter intervention)",
+        "key": "arrow_1787597335761_lbl"
+      }
+    }
+  ],
+  "fontSizes": {
+    "label": 22,
+    "ntitle": 22,
+    "nsub": 20,
+    "badge": 20
+  },
+  "legend": {
+    "visible": true,
+    "fx": 0.3447666202863985,
+    "fy": 0.9250616331209526,
+    "w": 301,
+    "items": [
+      {
+        "bg": "#5b9bd5",
+        "border": "#406d95",
+        "label": "Data layer"
+      },
+      {
+        "bg": "#ed7d31",
+        "border": "#a65822",
+        "label": "Model layer"
+      },
+      {
+        "bg": "#2e9688",
+        "border": "#20695f",
+        "label": "User layer"
+      }
+    ]
+  },
+  "split": {
+    "w": 369
+  },
+  "footer": "Università di Brescia · DICATAM · Yisihak Kassa · 2026"
+}
+</script>
+<script>var PUBLISHED = false;</script>
+<script src="js/chart-document.js"></script>
+<script src="js/editor-core.js"></script>
+<script src="js/arrows.js"></script>
+<script src="js/nodes.js"></script>
+<script src="js/workspace-ui.js"></script>
+<script src="js/export.js"></script>
+<script src="js/app.js"></script>
+<!-- Arrow builder palette -->
+<div id="arrow-palette" style="
+  display:none; position:fixed; right:20px; top:76px;
+  width:260px; background:#fff; border:1px solid #ccc;
+  border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.15);
+  padding:16px; z-index:2000; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:14px;">
+  <div style="font-weight:600;margin-bottom:12px;color:#111;">New arrow</div>
+  <div style="margin-bottom:10px;">
+    <div style="margin-bottom:5px;color:#666;font-size:12px;">Color</div>
+    <div id="palette-colors" style="display:flex;gap:7px;flex-wrap:wrap;"></div>
+  </div>
+  <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+    <input type="checkbox" id="palette-dashed" style="cursor:pointer;">
+    <label for="palette-dashed" style="cursor:pointer;color:#444;">Dashed line</label>
+  </div>
+  <div style="margin-bottom:14px;">
+    <div style="margin-bottom:5px;color:#666;font-size:12px;">Label (optional, \n for line break — drag to move, right-click to rotate)</div>
+    <textarea id="palette-label" rows="2" style="width:100%;box-sizing:border-box;
+      border:1px solid #ccc;border-radius:4px;padding:6px;resize:vertical;
+      font-size:13px;font-family:inherit;" placeholder="e.g. Wind stress &amp; heat flux"></textarea>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button id="palette-confirm" style="flex:1;padding:8px;background:#3b7dd8;color:#fff;
+      border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:500;">
+      Add arrow
+    </button>
+    <button id="palette-cancel" style="flex:1;padding:8px;background:#f5f4f0;
+      border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:13px;">
+      Cancel
+    </button>
+  </div>
+</div>
+
+<!-- Arrow / label editor popup -->
+<div id="label-edit-popup" style="
+  display:none; position:fixed; z-index:2100;
+  width:250px; background:#fff; border:1px solid #ccc;
+  border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.15);
+  padding:14px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:13px;">
+  <div style="font-weight:600;margin-bottom:10px;color:#111;">Edit</div>
+  <div style="margin-bottom:10px;">
+    <div style="margin-bottom:5px;color:#666;font-size:12px;">Arrow color</div>
+    <div id="label-edit-arrow-colors" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+  </div>
+  <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+    <input type="checkbox" id="edit-dashed" style="cursor:pointer;">
+    <label for="edit-dashed" style="cursor:pointer;color:#444;">Dashed line</label>
+  </div>
+  <div style="margin-bottom:10px;">
+    <div style="margin-bottom:5px;color:#666;font-size:12px;">Label text (\n for line break)</div>
+    <textarea id="label-edit-text" rows="3" style="width:100%;box-sizing:border-box;
+      border:1px solid #ccc;border-radius:4px;padding:6px;resize:vertical;
+      font-size:13px;font-family:inherit;" placeholder="Label text"></textarea>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button onclick="confirmLabelEdit()" style="flex:1;padding:6px;background:#3b7dd8;color:#fff;
+      border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:500;">Save</button>
+    <button onclick="hideLabelEdit()" style="flex:1;padding:6px;background:#f5f4f0;
+      border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:13px;">Cancel</button>
+  </div>
+  <div style="margin-top:8px;">
+    <button onclick="deleteArrowFromPopup()" style="width:100%;padding:6px;background:none;color:#c0392b;
+      border:1px solid #e8b4b0;border-radius:4px;cursor:pointer;font-size:13px;">Delete arrow</button>
+  </div>
+  <div style="margin-top:6px;font-size:11px;color:#aaa;">Ctrl+Enter to save · Esc to cancel</div>
+</div>
+
+<!-- Add node dialog -->
+<div id="add-node-dialog" style="
+  display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+  z-index:3000; width:280px; background:#fff; border:1px solid #ccc;
+  border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.18);
+  padding:16px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:13px;">
+  <div style="font-weight:600;margin-bottom:12px;color:#111;">New box</div>
+  <div style="margin-bottom:9px;">
+    <div style="margin-bottom:4px;color:#666;font-size:12px;">Title *</div>
+    <input id="an-title" type="text" style="width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:13px;font-family:inherit;" placeholder="e.g. River discharge model">
+  </div>
+  <div style="margin-bottom:9px;">
+    <div style="margin-bottom:4px;color:#666;font-size:12px;">Badge</div>
+    <input id="an-badge" type="text" style="width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:13px;font-family:inherit;" placeholder="e.g. Impl / In progress / Planned">
+  </div>
+  <div style="margin-bottom:9px;">
+    <div style="margin-bottom:4px;color:#666;font-size:12px;">Color</div>
+    <div id="an-color-row" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;padding:4px 0;"></div>
+  </div>
+  <div style="margin-bottom:12px;">
+    <div style="margin-bottom:4px;color:#666;font-size:12px;">Description (optional)</div>
+    <textarea id="an-nsub" rows="3" style="width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;padding:6px;resize:vertical;font-size:13px;font-family:inherit;" placeholder="Short description shown inside the box"></textarea>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button onclick="confirmAddNode()" style="flex:1;padding:7px;background:#3a8a3a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:500;">Add box</button>
+    <button onclick="hideAddNodeDialog()" style="flex:1;padding:7px;background:#f5f4f0;border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:13px;">Cancel</button>
+  </div>
+</div>
+
+<!-- Node right-click context menu -->
+<div id="node-ctx-menu" style="
+  display:none; position:fixed; z-index:3000;
+  background:#fff; border:1px solid #dedad4; border-radius:6px;
+  box-shadow:0 4px 14px rgba(0,0,0,0.13); overflow:hidden; min-width:148px;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:13px;">
+  <div onclick="ctxEditNodeText()" style="padding:8px 14px;cursor:pointer;color:#333;"
+    onmouseenter="this.style.background='#f5f4f0'" onmouseleave="this.style.background=''">✏ Edit</div>
+  <div style="height:1px;background:#e8e5df;"></div>
+  <div onclick="ctxRotateNode()" style="padding:8px 14px;cursor:pointer;color:#333;"
+    onmouseenter="this.style.background='#f5f4f0'" onmouseleave="this.style.background=''">↻ Rotate 90°</div>
+  <div style="height:1px;background:#e8e5df;"></div>
+  <div onclick="ctxDuplicateNode()" style="padding:8px 14px;cursor:pointer;color:#333;"
+    onmouseenter="this.style.background='#f5f4f0'" onmouseleave="this.style.background=''">⧉ Duplicate</div>
+  <div style="height:1px;background:#e8e5df;"></div>
+  <div onclick="ctxDeleteNode()" style="padding:8px 14px;cursor:pointer;color:#c0392b;"
+    onmouseenter="this.style.background='#fef2f2'" onmouseleave="this.style.background=''">Delete node</div>
+</div>
+
+<!-- Label context menu -->
+<div id="label-ctx-menu" style="
+  display:none; position:fixed; z-index:3000;
+  background:#fff; border:1px solid #dedad4; border-radius:6px;
+  box-shadow:0 4px 14px rgba(0,0,0,0.13); overflow:hidden; min-width:148px;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:13px;">
+  <div onclick="ctxEditLabel()" style="padding:8px 14px;cursor:pointer;color:#333;"
+    onmouseenter="this.style.background='#f5f4f0'" onmouseleave="this.style.background=''">✏ Edit</div>
+  <div style="height:1px;background:#e8e5df;"></div>
+  <div onclick="ctxRotateLabel()" style="padding:8px 14px;cursor:pointer;color:#333;"
+    onmouseenter="this.style.background='#f5f4f0'" onmouseleave="this.style.background=''">↻ Rotate 90° clockwise</div>
+</div>
+
+<!-- Node text editor popup -->
+<div id="node-text-edit-popup" style="
+  display:none; position:fixed; z-index:3100;
+  width:280px; background:#fff; border:1px solid #ccc;
+  border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.15);
+  padding:14px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:13px;">
+  <div style="font-weight:600;margin-bottom:10px;color:#111;">Edit</div>
+  <div id="nte-title-row" style="margin-bottom:8px;">
+    <div style="margin-bottom:4px;color:#666;font-size:12px;">Title</div>
+    <input id="nte-title" type="text" style="width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:13px;font-family:inherit;">
+  </div>
+  <div id="nte-badge-row" style="margin-bottom:8px;">
+    <div style="margin-bottom:4px;color:#666;font-size:12px;">Badge</div>
+    <input id="nte-badge" type="text" style="width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;padding:6px;font-size:13px;font-family:inherit;">
+  </div>
+  <div style="margin-bottom:8px;">
+    <div style="margin-bottom:4px;color:#666;font-size:12px;">Body text</div>
+    <textarea id="nte-nsub" rows="3" style="width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;padding:6px;resize:vertical;font-size:13px;font-family:inherit;"></textarea>
+  </div>
+  <div id="nte-color-row-wrap" style="margin-bottom:12px;">
+    <div style="margin-bottom:4px;color:#666;font-size:12px;">Color</div>
+    <div id="nte-color-row" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;padding:4px 0;"></div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button onclick="confirmNodeTextEdit()" style="flex:1;padding:6px;background:#3b7dd8;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:500;">Save</button>
+    <button onclick="hideNodeTextEdit()" style="flex:1;padding:6px;background:#f5f4f0;border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:13px;">Cancel</button>
+  </div>
+  <div style="margin-top:8px;font-size:11px;color:#aaa;">Enter to save · Ctrl+Enter in body · Esc to cancel</div>
+</div>
+
+<!-- Draw mode hint banner -->
+<div id="draw-hint" style="
+  display:none; position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+  background:rgba(30,30,30,0.85); color:#fff; border-radius:6px;
+  padding:8px 18px; font-size:13px; pointer-events:none; z-index:2000;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <span id="draw-hint-text"></span>
+</div>
+
+</body>
+</html>
