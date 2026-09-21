@@ -3,24 +3,51 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lake Iseo digital twin — data flow</title>
+  <title>EcoTwin chart library</title>
   <style>
-    html, body, iframe {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      border: 0;
-      display: block;
-      overflow: hidden;
-      background: #fff;
-    }
+    :root { color-scheme: light; font-family: Inter, system-ui, sans-serif; color: #18334d; background: #f4f7f7; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 32px 20px; }
+    main { width: min(960px, 100%); }
+    header { margin-bottom: 28px; }
+    h1 { margin: 0 0 8px; font-size: clamp(2rem, 5vw, 3rem); letter-spacing: -0.04em; }
+    p { margin: 0; max-width: 680px; color: #506575; font-size: 1.06rem; line-height: 1.55; }
+    .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    a { display: block; min-height: 178px; padding: 22px; border: 1px solid #dbe4e7; border-radius: 14px; background: #fff; color: inherit; text-decoration: none; box-shadow: 0 2px 6px rgb(24 51 77 / 6%); transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease; }
+    a:hover, a:focus-visible { transform: translateY(-3px); border-color: #3b7dd8; box-shadow: 0 10px 24px rgb(24 51 77 / 13%); outline: none; }
+    .place { display: block; color: #3b7dd8; font-size: .82rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    h2 { margin: 12px 0 8px; font-size: 1.25rem; }
+    .open { display: block; margin-top: 20px; color: #3b7dd8; font-weight: 700; }
   </style>
 </head>
 <body>
-  <iframe
-    src="Iseo_wiki.html?view=1&v=20260820-3"
-    title="Lake Iseo digital twin data flow"
-    loading="eager">
-  </iframe>
+  <main>
+    <header>
+      <h1>EcoTwin chart library</h1>
+      <p>Explore interactive data-flow diagrams developed across the EcoTwin project.</p>
+    </header>
+    <section class="charts" aria-label="Interactive charts">
+      <a href="Iseo_wiki.html?view=1">
+        <span class="place">Italy</span>
+        <h2>Lake Iseo digital twin</h2>
+        <span class="open">Open chart →</span>
+      </a>
+      <a href="Balaton_Wiki.html">
+        <span class="place">Hungary</span>
+        <h2>Lake Balaton wave and reed pathway</h2>
+        <span class="open">Open chart →</span>
+      </a>
+      <a href="Malaren_wiki.html?view=1">
+        <span class="place">Sweden</span>
+        <h2>Lake Mälaren digital twin</h2>
+        <span class="open">Open chart →</span>
+      </a>
+      <a href="Wylerberg_wiki.html?view=1">
+        <span class="place">Netherlands</span>
+        <h2>Lake Wylerberg swimming service</h2>
+        <span class="open">Open chart →</span>
+      </a>
+    </section>
+  </main>
 </body>
 </html>
