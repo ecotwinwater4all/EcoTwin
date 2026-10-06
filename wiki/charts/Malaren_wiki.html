@@ -461,7 +461,7 @@
       "x": 658,
       "y": 778,
       "w": 305,
-      "h": 121
+      "h": 142
     },
     "cnode_1789999446902": {
       "x": 74,
@@ -471,15 +471,9 @@
     },
     "cnode_1789999508431": {
       "x": 1279,
-      "y": 365,
+      "y": 375,
       "w": 267,
-      "h": 142
-    },
-    "cnode_1791261900450": {
-      "x": 409,
-      "y": 973,
-      "w": 804,
-      "h": 53
+      "h": 124
     }
   },
   "labelPositions": {
@@ -600,7 +594,8 @@
     "aem",
     "tbm",
     "eco",
-    "stk"
+    "stk",
+    "cnode_1791261900450"
   ],
   "customNodes": {
     "cnode_1789999296703": {
@@ -608,7 +603,7 @@
       "title": "Stakeholders",
       "badge": "",
       "bcls": "",
-      "nsub": "Warm-water alerts · treatment operations",
+      "nsub": "",
       "x": 1382,
       "y": 581,
       "w": 200
@@ -628,20 +623,10 @@
       "title": "Inflow temperature model",
       "badge": "",
       "bcls": "",
-      "nsub": "Air temperature → inflow water temperature",
+      "nsub": "",
       "x": 1382,
       "y": 581,
       "w": 200
-    },
-    "cnode_1791261900450": {
-      "id": "cnode_1791261900450",
-      "title": "",
-      "badge": "",
-      "bcls": "text",
-      "nsub": "Click a box in the diagram to see its data sources, inputs, outputs, processing, and role.",
-      "x": 736,
-      "y": 596,
-      "w": 150
     }
   },
   "textOverrides": {
@@ -709,7 +694,7 @@
       "title": "Stakeholders",
       "badge": "",
       "bcls": "",
-      "nsub": "Warm-water alerts · treatment operations"
+      "nsub": ""
     },
     "cnode_1789999446902": {
       "title": "Hydrologic model",
@@ -721,7 +706,7 @@
       "title": "Inflow temperature model",
       "badge": "",
       "bcls": "",
-      "nsub": "Air temperature → inflow water temperature"
+      "nsub": ""
     },
     "cnode_1791261900450": {
       "title": "",
@@ -807,7 +792,7 @@
     }
   },
   "sidebar": {
-    "_overview_": "The digital-twin is aimed to produce short-term forecasts of Lake Mälaren water temperature and thermal dynamics.\n\n# Workflow\n- ERA5 and MET Nordic provide continuous atmospheric forcing from the historical period through near-real-time conditions and the short-term forecast.\n- The GWLF hydrological model estimates daily stream discharge entering the lake.\n- The inflow-temperature model estimates the temperature of incoming water from air temperature.\n- GOTM combines the atmospheric and inflow boundary conditions to simulate water-temperature profiles and vertical mixing.\n\n# Decision support\nForecast products are evaluated against operational thresholds for abnormal warm-water conditions. Threshold exceedances can trigger warnings for water-treatment operators, supporting proactive management of possible impacts on treatment efficiency and raw-water quality.\n\n[b][i]Click a box in the diagram to see its data sources, inputs, outputs, processing, and role.[/i][/b]",
+    "_overview_": "This digital-twin workflow produces short-term forecasts of Lake Mälaren water temperature and thermal dynamics. It links meteorological forcing, catchment hydrology, inflow temperature, and lake hydrodynamics in one forecasting chain.\n\n# How the system works\n- ERA5 and MET Nordic provide continuous atmospheric forcing from the historical period through near-real-time conditions and the short-term forecast.\n- The GWLF hydrological model estimates daily stream discharge entering the lake.\n- The inflow-temperature model estimates the temperature of incoming water from air temperature.\n- GOTM combines the atmospheric and inflow boundary conditions to simulate water-temperature profiles and vertical mixing.\n\n# Decision support\nForecast products are evaluated against operational thresholds for abnormal warm-water conditions. Threshold exceedances can trigger warnings for water-treatment operators, supporting proactive management of possible impacts on treatment efficiency and raw-water quality.\n\n*[color=#1a9e53]Click a box in the diagram to see its data sources, inputs, outputs, processing, and role.[/color]*",
     "_overview_title_": "Lake Mälaren digital twin",
     "mon": "# Source\nA continuous meteorological forcing dataset combines ERA5 historical reanalysis, MET Nordic reanalysis, and the MET Nordic numerical weather forecast. ERA5 supplies the historical record up to its latest available date, followed by five days of MET Nordic reanalysis for near-real-time conditions and then the MET Nordic short-term forecast.\n\nThe MET Nordic forecast is a post-processed deterministic product built primarily from MEPS, with assimilation of observations and weather-radar data. It has 1 km spatial resolution, hourly temporal resolution, and a forecast horizon of up to 61 hours.\n\n# Data sources\n- [ERA5 hourly data on single levels from 1940 to present](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=overview), Copernicus Climate Data Store\n- [MET Nordic dataset](https://github.com/metno/NWPdocs/wiki/MET-Nordic-dataset), Norwegian Meteorological Institute\n\n# Outputs\n- Air temperature at 2 m (°C)\n- Dewpoint temperature at 2 m (°C)\n- 10 m u-component of wind (m/s)\n- 10 m v-component of wind (m/s)\n- Incoming shortwave radiation (W/m²)\n- Precipitation (mm/h)\n- Cloud cover (%)\n\n# Processing\nERA5 supplies air temperature, dewpoint temperature, precipitation, cloud cover, surface downwelling shortwave radiation, and the wind components. Accumulated shortwave energy is converted to a mean hourly flux, and accumulated precipitation is expressed as an hourly amount.\n\nMET Nordic supplies air temperature, relative humidity, precipitation, cloud cover, shortwave radiation, and wind speed and direction. Dewpoint temperature is calculated from air temperature and relative humidity. Wind speed and meteorological wind direction are converted to u and v components. Shortwave radiation and precipitation accumulations are converted to hourly values.\n\n# Role\nProvides atmospheric boundary conditions for the GWLF hydrological model, the inflow-temperature model, and the GOTM lake hydrodynamic model.",
     "vda": "# Source\nThe General Ocean Turbulence Model (GOTM) is a one-dimensional water-column model developed to simulate the hydrodynamic and thermodynamic processes governing vertical transport and turbulent mixing in aquatic systems. Initially developed for oceanographic applications, GOTM has subsequently been applied to freshwater environments, including lakes. The model resolves the vertical transport of momentum and heat and provides a framework for representing turbulent mixing through a broad range of turbulence-closure schemes.\n\nDocumentation is available at [gotm.net](https://gotm.net/portfolio/).\n\n# Inputs\n- Lake bathymetry\n- Air temperature at 2 m (°C)\n- Dewpoint temperature (°C)\n- Wind-velocity components at 10 m (u and v, m/s)\n- Incoming shortwave radiation (W/m²)\n- Cloud cover (%)\n- Precipitation (mm/h)\n- Air pressure (Pa)\n- Inflow discharge (m³/s) and temperature (°C)\n- Outflow discharge (m³/s)\n- Initial temperature conditions (°C)\n- Light availability\n\n# Outputs\n- Water-temperature profiles (°C)\n\n# Role\nProvides short-term forecasts of lake water temperature and thermal dynamics to support early warning and proactive management of abnormal warm-water events that may affect water-treatment processes.",
@@ -865,7 +850,7 @@
       },
       "waypoints": [
         [
-          1386.5355569748651,
+          1387.0356265057574,
           115.7350398681976
         ]
       ],
@@ -950,7 +935,7 @@
       "dst": {
         "node": "vda",
         "fx": 1,
-        "fy": 0.557364347677307
+        "fy": 0.5500512763940408
       },
       "waypoints": [],
       "color": "#ed7d31",
@@ -970,8 +955,8 @@
   },
   "legend": {
     "visible": true,
-    "fx": 0.28916295163100947,
-    "fy": 0.9109047619047619,
+    "fx": 0.37872243346007606,
+    "fy": 0.8752881747571049,
     "w": 301,
     "items": [
       {
