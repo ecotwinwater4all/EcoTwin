@@ -34,7 +34,7 @@ if (READONLY) {
   });
 }
 
-var NODE_TIP  = READONLY ? 'Click for details' : 'Drag to move · Double-click for options · Drag edges to resize';
+var NODE_TIP  = READONLY ? 'Click to view details' : 'Click to view details · Drag to move · Double-click for options · Drag edges to resize';
 
 // One capture-phase guard beats fourteen scattered ones. Every editing gesture
 // in this file -- node drag, resize handles, label drag, waypoint and endpoint
@@ -1240,33 +1240,53 @@ function htmlToPlainText(html) {
 function sidebarTextToHtml(text) {
   function inlineMarkup(line) {
     return line
+      .replace(/\[color=(#[0-9a-fA-F]{6})\]([\s\S]*?)\[\/color\]/g, '<span style="color:$1">$2</span>')
+      .replace(/\[b\]([\s\S]*?)\[\/b\]/g, '<strong>$1</strong>')
+      .replace(/\[i\]([\s\S]*?)\[\/i\]/g, '<em>$1</em>')
+      .replace(/\[s\]([\s\S]*?)\[\/s\]/g, '<s>$1</s>')
+      .replace(/\[mark\]([\s\S]*?)\[\/mark\]/g, '<mark>$1</mark>')
+      .replace(/\[code\]([\s\S]*?)\[\/code\]/g, '<code>$1</code>')
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/~~([^~]+)~~/g, '<s>$1</s>')
+      .replace(/==([^=]+)==/g, '<mark>$1</mark>')
       .replace(/\*([^*]+)\*/g, '<em>$1</em>')
       .replace(/`([^`]+)`/g, '<code>$1</code>');
   }
   var html = '';
   var buf = [];
   var list = [];
+  var listTag = 'ul';
   function flushBuf() {
     if (buf.length) { html += '<p>' + buf.join('<br>') + '</p>'; buf = []; }
   }
   function flushList() {
     if (list.length) {
-      html += '<ul>' + list.map(function(i) { return '<li>' + i + '</li>'; }).join('') + '</ul>';
+      html += '<' + listTag + '>' + list.map(function(i) { return '<li>' + i + '</li>'; }).join('') + '</' + listTag + '>';
       list = [];
     }
   }
   text.split('\n').forEach(function(line) {
-    if (/^#\s+/.test(line)) {
+    if (/^#{1,3}\s+/.test(line)) {
       flushBuf(); flushList();
-      html += '<h4>' + inlineMarkup(line.replace(/^#\s+/, '')) + '</h4>';
+      var level = Math.min(6, 3 + line.match(/^#+/)[0].length);
+      html += '<h' + level + '>' + inlineMarkup(line.replace(/^#{1,3}\s+/, '')) + '</h' + level + '>';
     } else if (/^---+\s*$/.test(line)) {
       flushBuf(); flushList();
       html += '<hr>';
     } else if (/^[-*]\s+/.test(line)) {
       flushBuf();
+      if (list.length && listTag !== 'ul') flushList();
+      listTag = 'ul';
       list.push(inlineMarkup(line.replace(/^[-*]\s+/, '')));
+    } else if (/^\d+\.\s+/.test(line)) {
+      flushBuf();
+      if (list.length && listTag !== 'ol') flushList();
+      listTag = 'ol';
+      list.push(inlineMarkup(line.replace(/^\d+\.\s+/, '')));
+    } else if (/^>\s?/.test(line)) {
+      flushBuf(); flushList();
+      html += '<blockquote>' + inlineMarkup(line.replace(/^>\s?/, '')) + '</blockquote>';
     } else if (line.trim() === '') {
       flushBuf(); flushList();
     } else {
@@ -1317,6 +1337,7 @@ function setSidebarView(id) {
 }
 
 var _sidebarDebounce = null;
+var sidebarHistory = { undo: [], redo: [], lastType: '', lastAt: 0 };
 
 function onSidebarInput() {
   clearTimeout(_sidebarDebounce);
@@ -1327,6 +1348,188 @@ function onSidebarInput() {
     contentEl.innerHTML = sidebarTextToHtml(ta.value);
     renderMath(contentEl);
   }, 300);
+}
+
+function sidebarEditorSnapshot() {
+  var ta = document.getElementById('side-textarea');
+  return ta ? { value: ta.value, start: ta.selectionStart, end: ta.selectionEnd } : null;
+}
+
+function updateSidebarHistoryButtons() {
+  var undoBtn = document.getElementById('side-undo-btn');
+  var redoBtn = document.getElementById('side-redo-btn');
+  if (undoBtn) undoBtn.disabled = sidebarHistory.undo.length === 0;
+  if (redoBtn) redoBtn.disabled = sidebarHistory.redo.length === 0;
+}
+
+function resetSidebarHistory() {
+  sidebarHistory = { undo: [], redo: [], lastType: '', lastAt: 0 };
+  updateSidebarHistoryButtons();
+}
+
+function captureSidebarHistory(event) {
+  var snap = sidebarEditorSnapshot();
+  if (!snap) return;
+  var now = Date.now();
+  var type = event && event.inputType ? event.inputType : 'command';
+  var isTyping = /^(insertText|deleteContentBackward|deleteContentForward)$/.test(type);
+  var coalesce = isTyping && sidebarHistory.lastType === type && now - sidebarHistory.lastAt < 700;
+  if (!coalesce) {
+    var last = sidebarHistory.undo[sidebarHistory.undo.length - 1];
+    if (!last || last.value !== snap.value || last.start !== snap.start || last.end !== snap.end) {
+      sidebarHistory.undo.push(snap);
+      if (sidebarHistory.undo.length > 200) sidebarHistory.undo.shift();
+    }
+  }
+  sidebarHistory.redo = [];
+  sidebarHistory.lastType = type;
+  sidebarHistory.lastAt = now;
+  updateSidebarHistoryButtons();
+}
+
+function restoreSidebarEditorSnapshot(snap) {
+  var ta = document.getElementById('side-textarea');
+  if (!ta || !snap) return;
+  ta.value = snap.value;
+  ta.setSelectionRange(snap.start, snap.end);
+  ta.focus();
+  sidebarHistory.lastType = '';
+  onSidebarInput();
+  updateSidebarHistoryButtons();
+}
+
+function sidebarUndo() {
+  if (!sidebarHistory.undo.length) return;
+  var current = sidebarEditorSnapshot();
+  if (current) sidebarHistory.redo.push(current);
+  restoreSidebarEditorSnapshot(sidebarHistory.undo.pop());
+}
+
+function sidebarRedo() {
+  if (!sidebarHistory.redo.length) return;
+  var current = sidebarEditorSnapshot();
+  if (current) sidebarHistory.undo.push(current);
+  restoreSidebarEditorSnapshot(sidebarHistory.redo.pop());
+}
+
+var SIDEBAR_INLINE_ORDER = ['color', 'bold', 'italic', 'strike', 'highlight', 'code'];
+
+function sidebarInlineToken(kind, color) {
+  if (kind === 'color') return { open: '[color=' + (color || '#1a55a0') + ']', close: '[/color]' };
+  var tags = {
+    bold: ['[b]', '[/b]'], italic: ['[i]', '[/i]'], strike: ['[s]', '[/s]'],
+    highlight: ['[mark]', '[/mark]'], code: ['[code]', '[/code]']
+  };
+  return tags[kind] ? { open: tags[kind][0], close: tags[kind][1] } : null;
+}
+
+function wrapSidebarInlineFormats(text, formats) {
+  var open = '';
+  var close = '';
+  SIDEBAR_INLINE_ORDER.forEach(function(kind) {
+    if (!formats[kind]) return;
+    var token = sidebarInlineToken(kind, kind === 'color' ? formats.color : null);
+    open += token.open;
+    close = token.close + close;
+  });
+  return open + text + close;
+}
+
+function sidebarSelection(ta) {
+  var value = ta.value;
+  var start = ta.selectionStart;
+  var end = ta.selectionEnd;
+  var text = value.slice(start, end);
+  var formats = {};
+  var legacy = [
+    { kind: 'bold', open: '**', close: '**' },
+    { kind: 'italic', open: '*', close: '*' },
+    { kind: 'strike', open: '~~', close: '~~' },
+    { kind: 'highlight', open: '==', close: '==' },
+    { kind: 'code', open: '`', close: '`' }
+  ];
+  var changed = true;
+  while (changed) {
+    changed = false;
+    var colorFull = text.match(/^\[color=(#[0-9a-fA-F]{6})\]([\s\S]*)\[\/color\]$/);
+    if (colorFull) {
+      formats.color = colorFull[1]; text = colorFull[2]; changed = true; continue;
+    }
+    var colorBefore = value.slice(0, start).match(/\[color=(#[0-9a-fA-F]{6})\]$/);
+    if (colorBefore && value.slice(end, end + 8) === '[/color]') {
+      formats.color = colorBefore[1]; start -= colorBefore[0].length; end += 8; changed = true; continue;
+    }
+    var found = false;
+    SIDEBAR_INLINE_ORDER.slice(1).some(function(kind) {
+      var token = sidebarInlineToken(kind);
+      if (text.indexOf(token.open) === 0 && text.slice(-token.close.length) === token.close) {
+        formats[kind] = true; text = text.slice(token.open.length, -token.close.length); found = true; return true;
+      }
+      if (value.slice(start - token.open.length, start) === token.open && value.slice(end, end + token.close.length) === token.close) {
+        formats[kind] = true; start -= token.open.length; end += token.close.length; found = true; return true;
+      }
+      return false;
+    });
+    if (found) { changed = true; continue; }
+    legacy.some(function(token) {
+      if (text.indexOf(token.open) === 0 && text.slice(-token.close.length) === token.close) {
+        formats[token.kind] = true; text = text.slice(token.open.length, -token.close.length); found = true; return true;
+      }
+      if (value.slice(start - token.open.length, start) === token.open && value.slice(end, end + token.close.length) === token.close) {
+        formats[token.kind] = true; start -= token.open.length; end += token.close.length; found = true; return true;
+      }
+      return false;
+    });
+    if (found) changed = true;
+  }
+  return { start: start, end: end, text: text, formats: formats };
+}
+
+function formatSidebarSelection(kind) {
+  var ta = document.getElementById('side-textarea');
+  if (!ta) return;
+  captureSidebarHistory();
+  var sel = sidebarSelection(ta);
+  var text = sel.text || 'text';
+  var replacement = text;
+  var inline = /^(bold|italic|strike|highlight|code|color)$/.test(kind);
+  if (inline && kind === 'color') {
+    var color = (document.getElementById('side-color-input') || {}).value || '#1a55a0';
+    sel.formats.color = sel.formats.color === color ? null : color;
+  } else if (inline) {
+    sel.formats[kind] = !sel.formats[kind];
+  }
+  if (inline) replacement = wrapSidebarInlineFormats(text, sel.formats);
+  else if (kind === 'link') replacement = '[' + text + '](https://)';
+  else if (kind === 'equation') {
+    if (/^\$[^$]+\$$/.test(text)) replacement = text.slice(1, -1);
+    else if (ta.value.slice(sel.start - 1, sel.start) === '$' && ta.value.slice(sel.end, sel.end + 1) === '$') {
+      sel.start -= 1; sel.end += 1; replacement = text;
+    } else replacement = '$' + text + '$';
+  }
+  else if (kind === 'heading') {
+    var before = ta.value.slice(0, sel.start);
+    var spacer = before && !/\n\s*\n$/.test(before) ? (/\n$/.test(before) ? '\n' : '\n\n') : '';
+    replacement = spacer + text.split('\n').map(function(line) {
+      var heading = line.replace(/^#{1,3}\s+/, '').replace(/^\[color=#[0-9a-fA-F]{6}\]|\[\/color\]$/g, '');
+      return '# [color=#1a55a0]' + heading + '[/color]';
+    }).join('\n\n');
+  }
+  else if (kind === 'list') replacement = text.split('\n').map(function(line) { return '- ' + line.replace(/^[-*]\s+/, ''); }).join('\n');
+  ta.setRangeText(replacement, sel.start, sel.end, 'end');
+  var innerText = kind === 'heading' ? text.replace(/^#{1,3}\s+/, '').replace(/^\[color=#[0-9a-fA-F]{6}\]|\[\/color\]$/g, '') : text.replace(/^\$|\$$/g, '');
+  var innerStart = sel.start + replacement.indexOf(innerText);
+  ta.setSelectionRange(innerStart, innerStart + innerText.length);
+  ta.focus();
+  onSidebarInput();
+}
+
+function flashSidebarSaved() {
+  var btn = document.querySelector('.side-save-btn');
+  if (!btn) return;
+  btn.textContent = 'Saved';
+  clearTimeout(btn._savedTimer);
+  btn._savedTimer = setTimeout(function() { btn.textContent = 'Save'; }, 900);
 }
 
 function toggleSidebarEdit() {
@@ -1358,6 +1561,7 @@ function toggleSidebarEdit() {
       ta.value = '';
     }
   }
+  resetSidebarHistory();
   if (pane) pane.classList.add('open');
   var btn = document.getElementById('side-edit-btn');
   if (btn) { btn.textContent = 'Close editor'; btn.classList.add('active'); }
@@ -1392,7 +1596,9 @@ function saveSidebarEdit() {
     var overviewTitleInput = document.getElementById('side-title-input');
     if (overviewTitleInput) sidebarContent[OVERVIEW_TITLE_KEY] = overviewTitleInput.value;
     saveSidebarContent();
-    showDefaultSidebar();
+    document.getElementById('side-title').textContent = overviewTitle();
+    setSidebarView(id);
+    flashSidebarSaved();
     return;
   }
   // Title + status banner → same store the canvas box uses (textOverrides), so
@@ -1420,6 +1626,7 @@ function saveSidebarEdit() {
   }
   applySidebarHeader(id);
   setSidebarView(id);
+  flashSidebarSaved();
 }
 
 function cancelSidebarEdit() {
@@ -1473,6 +1680,7 @@ function open_panel(id) {
   if (node && node._suppress) { node._suppress = false; return; }
   if (customNodes[id] && customNodes[id].bcls === 'text') return;
   if (!DATA[id] && !customNodes[id]) return;
+  completeSidebarDiscovery();
   if (activeId) {
     var old = document.getElementById('N-' + activeId);
     if (old) old.classList.remove('active');

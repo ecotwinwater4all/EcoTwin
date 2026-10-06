@@ -269,6 +269,22 @@ var DEFAULT_PANEL_HTML =
   '<h4>How to use</h4>' +
   '<p>Click any box to view its description, inputs, outputs, and implementation status. Click again or press ✕ to return here.</p>';
 
+var sidebarDiscoveryComplete = false;
+
+function sidebarDiscoveryCallout() {
+  return '<div class="sidebar-discovery-callout" role="note">' +
+    '<span class="sidebar-discovery-icon" aria-hidden="true">←</span>' +
+    '<span><strong>Explore the workflow</strong>' +
+    'Click any box in the diagram to view its data sources, inputs, outputs, processing, and role.</span>' +
+  '</div>';
+}
+
+function completeSidebarDiscovery() {
+  if (sidebarDiscoveryComplete) return;
+  sidebarDiscoveryComplete = true;
+  document.body.classList.remove('sidebar-discovery');
+}
+
 function showDefaultSidebar() {
   activeId = null;
   sidebarEditId = null;
@@ -280,7 +296,9 @@ function showDefaultSidebar() {
   if (editBtn) { editBtn.textContent = 'Edit'; editBtn.classList.remove('active'); }
   var contentEl = document.getElementById('side-content');
   var stored = sidebarContent && sidebarContent['_overview_'];
-  contentEl.innerHTML = stored != null ? sidebarTextToHtml(stored) : DEFAULT_PANEL_HTML;
+  contentEl.innerHTML = sidebarDiscoveryCallout() +
+    (stored != null ? sidebarTextToHtml(stored) : DEFAULT_PANEL_HTML);
+  if (!sidebarDiscoveryComplete) document.body.classList.add('sidebar-discovery');
   renderMath(contentEl);
 }
 

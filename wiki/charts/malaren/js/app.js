@@ -169,14 +169,14 @@ document.addEventListener('keydown', function(e) {
   var ae = document.activeElement;
   var inTextarea = !!(ae && ae.closest && ae.closest('#side-edit-pane'));
   if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
-    if (inTextarea) return;
+    if (inTextarea) { sidebarUndo(); e.preventDefault(); return; }
     undo();
     e.preventDefault();
     return;
   }
   if ((e.key === 'y' && (e.ctrlKey || e.metaKey)) ||
       (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey)) {
-    if (inTextarea) return;
+    if (inTextarea) { sidebarRedo(); e.preventDefault(); return; }
     redo();
     e.preventDefault();
     return;

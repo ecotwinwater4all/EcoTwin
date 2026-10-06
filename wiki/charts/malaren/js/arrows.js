@@ -78,11 +78,26 @@ function nodeAnchorFace(anchor) {
 var AUTO_ROUTE_CLEARANCE = 24;
 
 function loadArrows() {
+  var loaded = null;
   try {
     var saved = JSON.parse(lsGet(ARROWS_KEY));
-    if (Array.isArray(saved)) return saved.filter(function(a) { return a && a.src && a.dst; });
+    if (Array.isArray(saved)) loaded = saved.filter(function(a) { return a && a.src && a.dst; });
   } catch(e) {}
-  return JSON.parse(JSON.stringify(DEFAULT_ARROWS));
+  if (!loaded) loaded = JSON.parse(JSON.stringify(DEFAULT_ARROWS));
+  if (lsGet(ARROW_LABEL_REVISION_KEY) !== AUTHORITATIVE_ARROW_LABEL_REVISION) {
+    var defaultLabels = {};
+    DEFAULT_ARROWS.forEach(function(a) {
+      defaultLabels[a.id] = a.label && a.label.text ? a.label.text : '';
+    });
+    loaded.forEach(function(a) {
+      if (!Object.prototype.hasOwnProperty.call(defaultLabels, a.id)) return;
+      if (!a.label) a.label = { text: '', key: a.id + '_lbl' };
+      a.label.text = defaultLabels[a.id];
+    });
+    lsSet(ARROWS_KEY, JSON.stringify(loaded));
+    lsSet(ARROW_LABEL_REVISION_KEY, AUTHORITATIVE_ARROW_LABEL_REVISION);
+  }
+  return loaded;
 }
 
 function saveArrows() {

@@ -347,8 +347,22 @@
           <input type="text" id="side-badge-input" oninput="onSidebarMetaInput()" placeholder="e.g. Planned">
         </label>
       </div>
-      <textarea id="side-textarea" oninput="onSidebarInput()" placeholder="Write content here.&#10;&#10;$x^2$ inline math&#10;$$\frac{a}{b}$$ display math"></textarea>
-      <div class="side-math-hint"># Heading · **bold** · *italic* · `code` · [text](url) · - list · --- · $…$ math · Ctrl+S</div>
+      <div class="side-format-toolbar" aria-label="Sidebar text formatting">
+        <button type="button" id="side-undo-btn" onclick="sidebarUndo()" title="Undo (Ctrl+Z)" disabled>↶</button>
+        <button type="button" id="side-redo-btn" onclick="sidebarRedo()" title="Redo (Ctrl+Y)" disabled>↷</button>
+        <button type="button" onclick="formatSidebarSelection('bold')" title="Bold"><strong>B</strong></button>
+        <button type="button" onclick="formatSidebarSelection('italic')" title="Italic"><em>I</em></button>
+        <button type="button" onclick="formatSidebarSelection('code')" title="Inline code">&lt;/&gt;</button>
+        <button type="button" onclick="formatSidebarSelection('equation')" title="Inline LaTeX equation">$</button>
+        <button type="button" onclick="formatSidebarSelection('heading')" title="Heading">H</button>
+        <button type="button" onclick="formatSidebarSelection('list')" title="Bulleted list">•</button>
+        <button type="button" onclick="formatSidebarSelection('link')" title="Link">🔗</button>
+        <span class="side-color-control" title="Text colour">
+          <input type="color" id="side-color-input" value="#1a55a0" onchange="formatSidebarSelection('color')" aria-label="Apply text colour">
+        </span>
+      </div>
+      <textarea id="side-textarea" onbeforeinput="captureSidebarHistory(event)" oninput="onSidebarInput()" placeholder="Write content here.&#10;&#10;$x^2$ inline math&#10;$$\frac{a}{b}$$ display math"></textarea>
+      <div class="side-math-hint">Markdown: headings · bold · italic · code · links · lists · colour · quotes · LaTeX · Ctrl+S</div>
     </div>
   </div>
 
@@ -432,34 +446,40 @@
   },
   "positions": {
     "mon": {
-      "x": 152,
-      "y": 45,
+      "x": 651,
+      "y": 33,
       "w": 320,
       "h": 150
     },
     "vda": {
-      "x": 682,
-      "y": 45,
+      "x": 653,
+      "y": 362,
       "w": 316,
       "h": 150
     },
     "cnode_1789999296703": {
-      "x": 1228,
-      "y": 49,
+      "x": 658,
+      "y": 778,
       "w": 305,
-      "h": 142
+      "h": 121
     },
     "cnode_1789999446902": {
-      "x": 179,
-      "y": 415,
+      "x": 74,
+      "y": 376,
       "w": 265,
       "h": 122
     },
     "cnode_1789999508431": {
-      "x": 178,
-      "y": 722,
+      "x": 1279,
+      "y": 365,
       "w": 267,
-      "h": 124
+      "h": 142
+    },
+    "cnode_1791261900450": {
+      "x": 409,
+      "y": 973,
+      "w": 804,
+      "h": 53
     }
   },
   "labelPositions": {
@@ -547,6 +567,26 @@
       "x": 441.47804516423355,
       "y": 823.8289803971813,
       "r": 0
+    },
+    "arrow_1791220093871_lbl": {
+      "x": 390.6229768015387,
+      "y": 91.95094358589577,
+      "r": 0
+    },
+    "arrow_1791220122297_lbl": {
+      "x": 937.9786233028649,
+      "y": 271.26372804047855,
+      "r": 0
+    },
+    "arrow_1791220129555_lbl": {
+      "x": 969.2927086383553,
+      "y": 636.9999826661833,
+      "r": 0
+    },
+    "arrow_1791220103861_lbl": {
+      "x": 1200.4307732474158,
+      "y": 98.7147641381835,
+      "r": 0
     }
   },
   "deletedNodes": [
@@ -568,7 +608,7 @@
       "title": "Stakeholders",
       "badge": "",
       "bcls": "",
-      "nsub": "",
+      "nsub": "Warm-water alerts · treatment operations",
       "x": 1382,
       "y": 581,
       "w": 200
@@ -588,10 +628,20 @@
       "title": "Inflow temperature model",
       "badge": "",
       "bcls": "",
-      "nsub": "",
+      "nsub": "Air temperature → inflow water temperature",
       "x": 1382,
       "y": 581,
       "w": 200
+    },
+    "cnode_1791261900450": {
+      "id": "cnode_1791261900450",
+      "title": "",
+      "badge": "",
+      "bcls": "text",
+      "nsub": "Click a box in the diagram to see its data sources, inputs, outputs, processing, and role.",
+      "x": 736,
+      "y": 596,
+      "w": 150
     }
   },
   "textOverrides": {
@@ -659,7 +709,7 @@
       "title": "Stakeholders",
       "badge": "",
       "bcls": "",
-      "nsub": ""
+      "nsub": "Warm-water alerts · treatment operations"
     },
     "cnode_1789999446902": {
       "title": "Hydrologic model",
@@ -671,7 +721,13 @@
       "title": "Inflow temperature model",
       "badge": "",
       "bcls": "",
-      "nsub": ""
+      "nsub": "Air temperature → inflow water temperature"
+    },
+    "cnode_1791261900450": {
+      "title": "",
+      "badge": "",
+      "bcls": "text",
+      "nsub": "Click a box in the diagram to see its data sources, inputs, outputs, processing, and role."
     }
   },
   "styleOverrides": {
@@ -751,15 +807,18 @@
     }
   },
   "sidebar": {
-    "_overview_": "Click any box to view its description.",
+    "_overview_": "The digital-twin is aimed to produce short-term forecasts of Lake Mälaren water temperature and thermal dynamics.\n\n# Workflow\n- ERA5 and MET Nordic provide continuous atmospheric forcing from the historical period through near-real-time conditions and the short-term forecast.\n- The GWLF hydrological model estimates daily stream discharge entering the lake.\n- The inflow-temperature model estimates the temperature of incoming water from air temperature.\n- GOTM combines the atmospheric and inflow boundary conditions to simulate water-temperature profiles and vertical mixing.\n\n# Decision support\nForecast products are evaluated against operational thresholds for abnormal warm-water conditions. Threshold exceedances can trigger warnings for water-treatment operators, supporting proactive management of possible impacts on treatment efficiency and raw-water quality.\n\n[b][i]Click a box in the diagram to see its data sources, inputs, outputs, processing, and role.[/i][/b]",
     "_overview_title_": "Lake Mälaren digital twin",
+    "mon": "# Source\nA continuous meteorological forcing dataset combines ERA5 historical reanalysis, MET Nordic reanalysis, and the MET Nordic numerical weather forecast. ERA5 supplies the historical record up to its latest available date, followed by five days of MET Nordic reanalysis for near-real-time conditions and then the MET Nordic short-term forecast.\n\nThe MET Nordic forecast is a post-processed deterministic product built primarily from MEPS, with assimilation of observations and weather-radar data. It has 1 km spatial resolution, hourly temporal resolution, and a forecast horizon of up to 61 hours.\n\n# Data sources\n- [ERA5 hourly data on single levels from 1940 to present](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=overview), Copernicus Climate Data Store\n- [MET Nordic dataset](https://github.com/metno/NWPdocs/wiki/MET-Nordic-dataset), Norwegian Meteorological Institute\n\n# Outputs\n- Air temperature at 2 m (°C)\n- Dewpoint temperature at 2 m (°C)\n- 10 m u-component of wind (m/s)\n- 10 m v-component of wind (m/s)\n- Incoming shortwave radiation (W/m²)\n- Precipitation (mm/h)\n- Cloud cover (%)\n\n# Processing\nERA5 supplies air temperature, dewpoint temperature, precipitation, cloud cover, surface downwelling shortwave radiation, and the wind components. Accumulated shortwave energy is converted to a mean hourly flux, and accumulated precipitation is expressed as an hourly amount.\n\nMET Nordic supplies air temperature, relative humidity, precipitation, cloud cover, shortwave radiation, and wind speed and direction. Dewpoint temperature is calculated from air temperature and relative humidity. Wind speed and meteorological wind direction are converted to u and v components. Shortwave radiation and precipitation accumulations are converted to hourly values.\n\n# Role\nProvides atmospheric boundary conditions for the GWLF hydrological model, the inflow-temperature model, and the GOTM lake hydrodynamic model.",
+    "vda": "# Source\nThe General Ocean Turbulence Model (GOTM) is a one-dimensional water-column model developed to simulate the hydrodynamic and thermodynamic processes governing vertical transport and turbulent mixing in aquatic systems. Initially developed for oceanographic applications, GOTM has subsequently been applied to freshwater environments, including lakes. The model resolves the vertical transport of momentum and heat and provides a framework for representing turbulent mixing through a broad range of turbulence-closure schemes.\n\nDocumentation is available at [gotm.net](https://gotm.net/portfolio/).\n\n# Inputs\n- Lake bathymetry\n- Air temperature at 2 m (°C)\n- Dewpoint temperature (°C)\n- Wind-velocity components at 10 m (u and v, m/s)\n- Incoming shortwave radiation (W/m²)\n- Cloud cover (%)\n- Precipitation (mm/h)\n- Air pressure (Pa)\n- Inflow discharge (m³/s) and temperature (°C)\n- Outflow discharge (m³/s)\n- Initial temperature conditions (°C)\n- Light availability\n\n# Outputs\n- Water-temperature profiles (°C)\n\n# Role\nProvides short-term forecasts of lake water temperature and thermal dynamics to support early warning and proactive management of abnormal warm-water events that may affect water-treatment processes.",
+    "cnode_1789999446902": "# Source\nThe Generalized Watershed Loading Function (GWLF) model is a semi-distributed watershed model that simulates runoff generation and stream discharge from meteorological forcing and watershed characteristics. The original version was developed by Haith and Shoemaker (1987) and later developed further by Schneiderman et al. (2002). This study uses the hydrological component to estimate daily streamflow entering the lake, including precipitation, evapotranspiration, infiltration, soil-moisture dynamics, and groundwater storage.\n\nGWLF routes rain and snowmelt to surface pathways using the US Soil Conservation Service Curve Number method. Water that remains after surface runoff is routed through unsaturated, saturated, and deep saturated zones. Evapotranspiration removes water from the unsaturated zone; transfers between soil zones depend on storage thresholds; and fast and slow recession coefficients govern groundwater drainage to the stream.\n\n# Inputs\n- Total daily precipitation (cm d⁻¹)\n- Mean daily air temperature (°C)\n- CORINE land-cover data\n- Gridded curve-number data (Jaafar et al., 2019)\n- Soil properties and topography\n\n# Outputs\n- Stream discharge (cm d⁻¹ and m³ s⁻¹)\n\n# Role\nProvides inflow-discharge boundary conditions for the GOTM lake model.\n\n# References\n- Haith, D. A., & Shoemaker, L. L. (1987). Generalized watershed loading functions for stream flow nutrients. *JAWRA Journal of the American Water Resources Association*, 23(3), 471–478. [DOI](https://doi.org/10.1111/j.1752-1688.1987.tb00825.x)\n- Schneiderman, E. M., Pierson, D. C., Lounsbury, D. G., & Zion, M. S. (2002). Modeling the hydrochemistry of the Cannonsville watershed with generalized watershed loading functions (GWLF). *JAWRA Journal of the American Water Resources Association*, 38(5), 1323–1347. [DOI](https://doi.org/10.1111/j.1752-1688.2002.tb04350.x)\n- Williams, J. R., Kannan, N., Wang, X., Santhi, C., & Arnold, J. G. (2012). Evolution of the SCS runoff curve number method and its application to continuous runoff simulation. *Journal of Hydrologic Engineering*, 17(11), 1221–1229. [DOI](https://doi.org/10.1061/(ASCE)HE.1943-5584.0000529)",
+    "cnode_1789999508431": "# Source\nThe inflow-temperature model simulates the temporal evolution of water temperature as a function of atmospheric forcing. It assumes that water temperature adjusts toward air temperature through a first-order heat-exchange process. Separate heat-transfer coefficients represent the observed asymmetry between warming and cooling.\n\nThe model is formulated as:\n\n$\\frac{dT_w}{dt}=k(T_a-T_w)$\n\nwhere $T_w$ is inflow water temperature (°C), $T_a$ is air temperature (°C), and $k$ is the heat-transfer coefficient (d⁻¹). The coefficient uses $k_w$ during warming and $k_c$ during cooling. A lower boundary of 0 °C prevents further cooling after the inflow reaches the freezing point.\n\n# Inputs\n- Air temperature (°C)\n- Initial inflow temperature (°C)\n- Warming coefficient $k_w$ (d⁻¹)\n- Cooling coefficient $k_c$ (d⁻¹)\n\n# Output\n- Inflow water temperature (°C)\n\n# Role\nProvides inflow-water-temperature boundary conditions for the GOTM lake model.",
+    "cnode_1789999296703": "# Purpose\nForecast products are evaluated against predefined operational thresholds for abnormal warm-water conditions.\n\n# Decision support\nThreshold exceedances trigger warnings for water-treatment operators. The warnings support proactive management of potential impacts on treatment efficiency and water quality.",
     "icon": "# Source\nMeteoHub's ICON-2I regional NWP model, 2.2 km horizontal resolution over Italy. Issued 2× daily (00, 12 UTC), 72-hour forecast horizon. Accessed via MeteoHub API.\n\nICON-2I model:\n- [ItaliaMeteo short-term forecasts](https://www.agenziaitaliameteo.it/en/meteorology/forecasts/short-term-forecasts-italy/)\n- [ICON model](https://www.icon-model.org/)\n\nWRF model:\n- [MISTRAL WRF forecasts](https://mistral-cat.hpc.cineca.it/dataset/previsioni-meteorologiche-modello-wrf)\n- [WRF users](https://www2.mmm.ucar.edu/wrf/users/)\n\n# Target outputs\n- Air temperature at 2m (°C)\n- Wind speed at 10m (m/s)\n- Wind direction at 10m (°)\n- Shortwave radiation at surface (W/m²)\n- Cloud cover (%)\n- Precipitation (mm/h)\n- Relative humidity (%)\n- Pressure at surface (hPa)\n\n# Role\nAtmospheric forcing for AEM3D. Also displayed in a user-friendly way to stakeholders on the dashboard.\n\n# Format\nGRIB2 download → NetCDF extraction (cfgrib) → AEM3D MET `.dat` files. Bilinear interpolation to the lake grid. Filtered by forecast reference time.",
-    "mon": "",
     "aem": "# Source\nAEM3D (Aquatic Ecosystem Model 3D) is a numerical modeling tool used to simulate hydrodynamic and thermodynamic processes in aquatic systems. AEM3D accounts for environmental forcing such as inflows, thermal and mechanical fluxes at the surface.\n\nFull documentation is made available at [AEM3D documentation](https://www.hydronumerics.com.au/software/aquatic-ecosystem-model-3d)\n\n# Target inputs\n- Lake's bathymetry\n- Air temperature at 2m (°C)\n- Wind speed at 10m (m/s)\n- Wind direction at 10m (°)\n- Shortwave radiation at surface (W/m²)\n- Cloud cover (%)\n- Precipitation (mm/h)\n- Relative humidity (%)\n- Inflows discharge (m3/s), temperature (°C) and turbidity (FTU)\n- Outflow discharge (m3/s)\n- Initial condition for temperature (°C) and turbidity (FTU)\n\n# Target outputs\n- Water velocities (m/s)\n- Water temperature (°C)\n- Turbidity (FTU)\n- Water level (m)\n\n# Format and operational mode\nTwice-daily forecast cycle driven by ICON-2I (00 and 12 UTC). Two-phase execution: state advance to next issue time, then 72-hour forecast product. Warm-start from restart file preserves thermal stratification.\n\n# Role\nProvides the input to the transport model and to the module aimed at quantifying the ecosystem services.",
     "wsm": "# Source\nThe implemented watershed model is a simplified, computationally efficient tool for the preliminary assessment of river water quality, particularly suited to poorly monitored basins and stable low-flow periods. Starting from a digital elevation model (DEM), it automatically reconstructs the drainage network and its geometric and topological properties, representing it as a non-binary tree. Recursive procedures are then used to calculate discharge, hydraulic characteristics, mass and energy balances, and chemical processes throughout the network. The model estimates natural discharge from the drained area, while empirical relationships determine channel width, depth, velocity, and bed roughness. Users must provide meteorological data, water-quality parameters, and information about pollutant sources, discharges, withdrawals, and artificial diversions.\n\nPilotti, M. and Rosso, R. (1990) “SHELL: a general framework for modelling the distributed response of a drainage basin”, Proceedings of the Eighth International Conference on Computational Methods in Water Resources, Held in Venice, Italy, June 11-15, 1990.\n\nPilotti, M. Chapra S. C. and Valerio, G. (2019). Steady-State Distributed Modeling of Dissolved Oxygen in Data-Poor, Sewage Dominated River Systems Using Drainage Networks, Environmental Modeling and Software, 111,  153-169, [DOI](https://doi.org/10.1016/j.envsoft.2018.08.027).\n\n# Target inputs\n- gridded precipitation (mm/h)\n- air temperature (°C)\n- watershed initial conditions\n\n# Target outputs\n- discharge Q(t) (m³/s)\n- inflow temperature (°C)\n- suspended sediment (g/L)\n\n# Role\nHydrological forcing for AEM3D.",
     "tbm": "# Target inputs\n- Water velocities (m/s)\n- Water temperature (°C)\n- Turbidity (FTU)\n- Optical images of the surface waters\n- Water level (m)\n\n# Target outputs\n- Map of the surface distribution of the target variables (turbidity, macrophytes, floating debris etc.)\n\n# Role\nProvides the input to the module aimed at quantifying the ecosystem services",
     "eco": "# Status\nPlanned. Awaiting transport model outputs and water quality module coupling.\n\n# Target inputs\n- Wind speed and direction\n- Water velocities (m/s)\n- Water temperature (°C)\n- Turbidity map (FTU)\n- Maps of floating debris\n\n# Target output\n- Water level threshold and wind alerts\n- Areas with the highest probability of floating debris accumulation, enabling targeted clean-up activities.\n- Turbidity and temperature hotspots.",
-    "vda": "",
     "arc": "# Contents\n3-D temperature (°C)3-D velocity (m/s)water level (m a.s.l.)station depth profiles.\n\n# Structure\nNetCDF files per station, indexed by `forecast_reference_time` and `forecast_period`. Each twice-daily operational run appends one entry.\n\n# Role\nPersistent record of all operational forecast runs. Source for dashboard queries and validation against station observations.\n\n# Links\n[Wiki page](https://github.com/giuliavalerio/PROVA/wiki/Aquatic-Ecosystem-model-of-Lake-Iseo)\n",
     "dash": "# Stack\nReact + Vite + D3.js frontend, FastAPI backend. Reads forecast archive NetCDF directly, without an intermediate database for simulation data.\n\n# Current views\n- Depth–time temperature heatmap (click to select time/depth)\n- Vertical temperature profile at selected time\n- Surface temperature time series\n- Depth-specific temperature time series\n\n# Aggregation\nRaw / daily / weekly / monthly with avg / min / max / median, all computed in the browser.\n\n# Future additions\nDO profiles, turbidity, velocity maps, scenario comparison, threshold alerts.",
     "stk": "# Status\nPlanned. Engagement begins once the dashboard prototype is ready.\n\n# Groups\n- Dam operators: real-time level forecasts and gate scenario testing\n- ARPA Lombardia: model outputs and validation data sharing\n- Water utilities: intake temperature and level forecasts\n- Municipal authorities: flood and drought early warning\n\n# Feedback loop\nDam gate control decisions translate back into AEM3D boundary conditions (offtake rates, outlet levels), closing the operational digital twin loop.",
@@ -767,143 +826,139 @@
   },
   "arrows": [
     {
-      "id": "arrow_1789999726298",
+      "id": "arrow_1791220093871",
       "src": {
         "node": "mon",
         "fx": 0,
-        "fy": 0.5517435928489899
+        "fy": 0.5665280680777128
       },
       "dst": {
-        "node": "cnode_1789999508431",
-        "fx": 0,
-        "fy": 0.4971940880070771
+        "node": "cnode_1789999446902",
+        "fx": 0.5707173093939407,
+        "fy": 0
       },
       "waypoints": [
         [
-          97.78643932481752,
-          128.61571033082896
-        ],
-        [
-          97.78643932481752,
-          783.8916570496384
+          225.92756789769882,
+          117.98961862277638
         ]
       ],
       "color": "#5b9bd5",
       "marker": "mbl",
       "dashed": false,
       "label": {
-        "text": "",
-        "key": "arrow_1789999726298_lbl"
+        "text": "Precipitation · air temperature",
+        "key": "arrow_1791220093871_lbl"
       }
     },
     {
-      "id": "arrow_1789999740542",
-      "src": {
-        "arrow": "arrow_1789999726298",
-        "seg": 1,
-        "t": 0.5372289173668381
-      },
-      "dst": {
-        "node": "cnode_1789999446902",
-        "fx": 0,
-        "fy": 0.536141915159001
-      },
-      "waypoints": [],
-      "color": "#5b9bd5",
-      "marker": "mbl",
-      "dashed": false,
-      "label": {
-        "text": "",
-        "key": "arrow_1789999740542_lbl"
-      }
-    },
-    {
-      "id": "arrow_1789999786432",
+      "id": "arrow_1791220103861",
       "src": {
         "node": "mon",
         "fx": 1,
-        "fy": 0.4157956266237589
+        "fy": 0.5514975424829197
+      },
+      "dst": {
+        "node": "cnode_1789999508431",
+        "fx": 0.4027550577595263,
+        "fy": 0
+      },
+      "waypoints": [
+        [
+          1386.5355569748651,
+          115.7350398681976
+        ]
+      ],
+      "color": "#5b9bd5",
+      "marker": "mbl",
+      "dashed": false,
+      "label": {
+        "text": "Air temperature",
+        "key": "arrow_1791220103861_lbl"
+      }
+    },
+    {
+      "id": "arrow_1791220122297",
+      "src": {
+        "node": "mon",
+        "fx": 0.5093023923355475,
+        "fy": 1
       },
       "dst": {
         "node": "vda",
-        "fx": 0,
-        "fy": 0.4157956266237589
+        "fx": 0.5094201443039148,
+        "fy": 0
       },
       "waypoints": [],
       "color": "#5b9bd5",
       "marker": "mbl",
       "dashed": false,
       "label": {
-        "text": "",
-        "key": "arrow_1789999786432_lbl"
+        "text": "Meteorological forcing",
+        "key": "arrow_1791220122297_lbl"
       }
     },
     {
-      "id": "arrow_1789999793389",
+      "id": "arrow_1791220129555",
       "src": {
         "node": "vda",
-        "fx": 1,
-        "fy": 0.4750165804134926
+        "fx": 0.5094201443039148,
+        "fy": 1
       },
       "dst": {
         "node": "cnode_1789999296703",
-        "fx": 0,
-        "fy": 0.47364772292389673
+        "fx": 0.509759945209225,
+        "fy": 0
       },
       "waypoints": [],
       "color": "#ed7d31",
       "marker": "mor",
       "dashed": false,
       "label": {
-        "text": "",
-        "key": "arrow_1789999793389_lbl"
+        "text": "Water temperature forecasts",
+        "key": "arrow_1791220129555_lbl"
       }
     },
     {
-      "id": "arrow_1790001148545",
-      "src": {
-        "node": "cnode_1789999508431",
-        "fx": 1,
-        "fy": 0.5239629984220328
-      },
-      "dst": {
-        "node": "vda",
-        "fx": 0.4757688369388832,
-        "fy": 1
-      },
-      "waypoints": [
-        [
-          832.3430086678832,
-          786.9714083358319
-        ]
-      ],
-      "color": "#ed7d31",
-      "marker": "mor",
-      "dashed": false,
-      "label": {
-        "text": "",
-        "key": "arrow_1790001148545_lbl"
-      }
-    },
-    {
-      "id": "arrow_1790001210814",
+      "id": "arrow_1791220173387",
       "src": {
         "node": "cnode_1789999446902",
         "fx": 1,
-        "fy": 0.5203727212922047
+        "fy": 0.4507430757052282
       },
       "dst": {
-        "arrow": "arrow_1790001148545",
-        "seg": 1,
-        "t": 0.5207115584385161
+        "node": "vda",
+        "fx": 0,
+        "fy": 0.45986812282528294
       },
       "waypoints": [],
       "color": "#ed7d31",
       "marker": "mor",
       "dashed": false,
       "label": {
-        "text": "",
-        "key": "arrow_1790001210814_lbl"
+        "text": "Inflow discharge",
+        "key": "arrow_1791220173387_lbl"
+      }
+    },
+    {
+      "id": "arrow_1791220180602",
+      "src": {
+        "node": "cnode_1789999508431",
+        "fx": 0,
+        "fy": 0.560546278267411
+      },
+      "dst": {
+        "node": "vda",
+        "fx": 1,
+        "fy": 0.557364347677307
+      },
+      "waypoints": [],
+      "color": "#ed7d31",
+      "marker": "mor",
+      "dashed": false,
+      "label": {
+        "text": "Inflow water temperature",
+        "key": "arrow_1791220180602_lbl"
       }
     }
   ],
@@ -915,8 +970,8 @@
   },
   "legend": {
     "visible": true,
-    "fx": 0.3447666202863985,
-    "fy": 0.9250616331209526,
+    "fx": 0.28916295163100947,
+    "fy": 0.9109047619047619,
     "w": 301,
     "items": [
       {
